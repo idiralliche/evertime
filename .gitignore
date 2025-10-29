@@ -1,0 +1,22 @@
+# Node / Frontend
+node_modules/
+dist/
+*.log
+*.lock
+pnpm-lock.yaml
+yarn.lock
+
+# Symfony / PHP
+/vendor/
+.var/
+var/
+.env
+.env.local
+.env.*.local
+.phpunit.result.cache
+
+# OS / Misc
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

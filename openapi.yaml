@@ -1,0 +1,1333 @@
+openapi: 3.0.3
+info:
+  title: UpSeed API - MVP (Tasks & Blocks, Availability/Rituals/Unexpected, Sessions/Settings/Devices)
+  version: 1.0.0
+  description: |
+    Unified minimal REST contract for the UpSeed MVP.
+    Domains included: Tasks & Blocks, Auto-Planning, Availability (rules/overrides), Rituals, Unexpected Events, Planning History, Sessions (timer), Settings, Devices.
+
+servers:
+  - url: https://api.upseed.local
+
+security:
+  - bearerAuth: []
+
+components:
+  # ===================== Security =====================
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  # ===================== Common Parameters =====================
+  parameters:
+    Cursor:
+      name: cursor
+      in: query
+      required: false
+      schema: { type: string }
+      description: Opaque pagination cursor
+    Limit:
+      name: limit
+      in: query
+      required: false
+      schema: { type: integer, minimum: 1, maximum: 200, default: 50 }
+      description: Page size
+    IfMatch:
+      name: If-Match
+      in: header
+      required: true
+      schema: { type: string }
+      description: Optimistic concurrency via ETag
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: false
+      schema: { type: string, format: uuid }
+      description: Idempotency for POST (ensures safe retries).
+    OnDate:
+      name: on_date
+      in: query
+      required: false
+      schema: { type: string, format: date }
+      description: Returns rules whose version covers this date
+    DateFrom:
+      name: date_from
+      in: query
+      required: false
+      schema: { type: string, format: date }
+    DateTo:
+      name: date_to
+      in: query
+      required: false
+      schema: { type: string, format: date }
+
+  # ===================== Common Schemas =====================
+  schemas:
+    Error:
+      type: object
+      properties:
+        error: { type: string }
+        message: { type: string }
+        details:
+          type: object
+          additionalProperties: true
+
+    # ===== Tasks & Blocks =====
+    Task:
+      type: object
+      required: [id, title_ciphertext, status, created_at, updated_at, etag]
+      properties:
+        id: { type: string, format: uuid }
+        title_ciphertext: { type: string, description: "Client-side encrypted base64" }
+        notes_ciphertext: { type: string, nullable: true }
+        est_duration_min: { type: integer, minimum: 1, nullable: true }
+        priority:
+          type: string
+          enum: [low, normal, high]
+          default: normal
+        is_urgent: { type: boolean, default: false }
+        due_at: { type: string, format: date-time, nullable: true }
+        flexibility_score: { type: integer, minimum: 0, maximum: 100, default: 50 }
+        status:
+          type: string
+          enum: [inbox, planned, completed, cancelled]
+          default: inbox
+        parent_task_id: { type: string, format: uuid, nullable: true }
+        recurrence_series_id: { type: string, format: uuid, nullable: true }
+        tag_ids:
+          type: array
+          items: { type: string, format: uuid }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+        etag: { type: string }
+
+    TaskCreate:
+      type: object
+      required: [title_ciphertext]
+      properties:
+        title_ciphertext: { type: string }
+        notes_ciphertext: { type: string, nullable: true }
+        est_duration_min: { type: integer, minimum: 1, nullable: true }
+        priority: { $ref: '#/components/schemas/Task/properties/priority' }
+        is_urgent: { type: boolean, default: false }
+        due_at: { type: string, format: date-time, nullable: true }
+        flexibility_score: { type: integer, minimum: 0, maximum: 100, default: 50 }
+        parent_task_id: { type: string, format: uuid, nullable: true }
+        recurrence_series_id: { type: string, format: uuid, nullable: true }
+        tag_ids:
+          type: array
+          items: { type: string, format: uuid }
+
+    TaskUpdate:
+      type: object
+      properties:
+        title_ciphertext: { type: string }
+        notes_ciphertext: { type: string, nullable: true }
+        est_duration_min: { type: integer, minimum: 1, nullable: true }
+        priority: { $ref: '#/components/schemas/Task/properties/priority' }
+        is_urgent: { type: boolean }
+        due_at: { type: string, format: date-time, nullable: true }
+        flexibility_score: { type: integer, minimum: 0, maximum: 100 }
+        status: { $ref: '#/components/schemas/Task/properties/status' }
+        tag_ids:
+          type: array
+          items: { type: string, format: uuid }
+
+    PaginatedTasks:
+      type: object
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/Task' }
+        next_cursor: { type: string, nullable: true }
+
+    TaskBlock:
+      type: object
+      required: [id, task_id, start_at, end_at, locked, status, etag]
+      properties:
+        id: { type: string, format: uuid }
+        task_id: { type: string, format: uuid }
+        user_id: { type: string, format: uuid, nullable: true }
+        series_id: { type: string, format: uuid, nullable: true }
+        title_ciphertext: { type: string, nullable: true }
+        start_at: { type: string, format: date-time }
+        end_at: { type: string, format: date-time }
+        locked: { type: boolean, default: false }
+        status:
+          type: string
+          enum: [scheduled, in_progress, done, moved, cancelled]
+          default: scheduled
+        origin:
+          type: object
+          additionalProperties: true
+        occurrence_seq: { type: integer, nullable: true }
+        etag: { type: string }
+
+    BlockCreate:
+      type: object
+      required: [task_id, start_at, end_at]
+      properties:
+        task_id: { type: string, format: uuid }
+        title_ciphertext: { type: string, nullable: true }
+        start_at: { type: string, format: date-time }
+        end_at: { type: string, format: date-time }
+        locked: { type: boolean, default: false }
+        origin:
+          type: object
+          description: 'e.g. {"type":"manual"|"auto"|"split"|"replan"}'
+          additionalProperties: true
+
+    BlockUpdate:
+      type: object
+      properties:
+        title_ciphertext: { type: string, nullable: true }
+        start_at: { type: string, format: date-time }
+        end_at: { type: string, format: date-time }
+        locked: { type: boolean }
+        status:
+          type: string
+          enum: [scheduled, in_progress, done, moved, cancelled]
+
+    PaginatedBlocks:
+      type: object
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/TaskBlock' }
+        next_cursor: { type: string, nullable: true }
+
+    AutoPlanRequest:
+      type: object
+      properties:
+        task_ids:
+          type: array
+          items: { type: string, format: uuid }
+          nullable: true
+        horizon_until: { type: string, format: date-time }
+        strategy:
+          type: object
+          properties:
+            profile:
+              type: string
+              enum: [conservative, balanced, aggressive]
+              default: balanced
+            respect_locked: { type: boolean, default: true }
+            buffers_min: { type: integer, default: 30 }
+
+    AutoPlanResponse:
+      type: object
+      properties:
+        plan_id: { type: string, format: uuid }
+        proposals:
+          type: array
+          items:
+            type: object
+            properties:
+              task_id: { type: string, format: uuid }
+              start_at: { type: string, format: date-time }
+              end_at: { type: string, format: date-time }
+              reason: { type: string }
+        explanations:
+          type: array
+          items: { type: string }
+
+    PostponeRequest:
+      type: object
+      properties:
+        strategy:
+          type: string
+          enum: [next_free, next_day_morning, pick]
+          default: next_free
+        min_shift_min: { type: integer, default: 15 }
+
+    # ===== Availability / Rituals / Unexpected / History =====
+    AvailabilityRuleWindow:
+      type: object
+      required: [id, seq, start_time, end_time]
+      properties:
+        id: { type: string, format: uuid }
+        seq: { type: integer, minimum: 1 }
+        start_time: { type: string, pattern: '^[0-2][0-9]:[0-5][0-9]$' }
+        end_time: { type: string, pattern: '^[0-2][0-9]:[0-5][0-9]$' }
+
+    AvailabilityRule:
+      type: object
+      required: [id, weekday, effective_from, active, windows, etag]
+      properties:
+        id: { type: string, format: uuid }
+        weekday: { type: integer, minimum: 0, maximum: 6, description: "0=Sunday ... 6=Saturday" }
+        effective_from: { type: string, format: date }
+        effective_until: { type: string, format: date, nullable: true }
+        active: { type: boolean, default: true }
+        windows:
+          type: array
+          items: { $ref: '#/components/schemas/AvailabilityRuleWindow' }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+        etag: { type: string }
+
+    AvailabilityRuleCreate:
+      type: object
+      required: [weekday, effective_from, windows]
+      properties:
+        weekday: { $ref: '#/components/schemas/AvailabilityRule/properties/weekday' }
+        effective_from: { type: string, format: date }
+        effective_until: { type: string, format: date, nullable: true }
+        active: { type: boolean, default: true }
+        windows:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            required: [seq, start_time, end_time]
+            properties:
+              seq: { type: integer, minimum: 1 }
+              start_time: { type: string, pattern: '^[0-2][0-9]:[0-5][0-9]$' }
+              end_time: { type: string, pattern: '^[0-2][0-9]:[0-5][0-9]$' }
+
+    AvailabilityRuleUpdate:
+      type: object
+      properties:
+        effective_until: { type: string, format: date, nullable: true }
+        active: { type: boolean }
+
+    AvailabilityRuleWindowUpdate:
+      type: object
+      properties:
+        seq: { type: integer, minimum: 1 }
+        start_time: { type: string, pattern: '^[0-2][0-9]:[0-5][0-9]$' }
+        end_time: { type: string, pattern: '^[0-2][0-9]:[0-5][0-9]$' }
+
+    AvailabilityOverrideWindow:
+      type: object
+      required: [id, seq, start_time, end_time]
+      properties:
+        id: { type: string, format: uuid }
+        seq: { type: integer, minimum: 1 }
+        start_time: { type: string, pattern: '^[0-2][0-9]:[0-5][0-9]$' }
+        end_time: { type: string, pattern: '^[0-2][0-9]:[0-5][0-9]$' }
+
+    AvailabilityOverride:
+      type: object
+      required: [id, date, windows, etag]
+      properties:
+        id: { type: string, format: uuid }
+        date: { type: string, format: date }
+        reason: { type: string, nullable: true }
+        windows:
+          type: array
+          items: { $ref: '#/components/schemas/AvailabilityOverrideWindow' }
+        created_at: { type: string, format: date-time }
+        etag: { type: string }
+
+    AvailabilityOverrideCreate:
+      type: object
+      required: [date, windows]
+      properties:
+        date: { type: string, format: date }
+        reason: { type: string, nullable: true }
+        windows:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            required: [seq, start_time, end_time]
+            properties:
+              seq: { type: integer, minimum: 1 }
+              start_time: { type: string, pattern: '^[0-2][0-9]:[0-5][0-9]$' }
+              end_time: { type: string, pattern: '^[0-2][0-9]:[0-5][0-9]$' }
+
+    ApplicableAvailability:
+      type: object
+      properties:
+        date: { type: string, format: date }
+        source: { type: string, enum: [override, rule] }
+        windows:
+          type: array
+          items:
+            type: object
+            properties:
+              start_time: { type: string }
+              end_time: { type: string }
+
+    Ritual:
+      type: object
+      required: [id, title_ciphertext, rrule, locked, soft_tolerance_min, etag]
+      properties:
+        id: { type: string, format: uuid }
+        title_ciphertext: { type: string, description: "Client-side encrypted base64" }
+        rrule: { type: string, description: "RFC5545 RRULE e.g. FREQ=WEEKLY;BYDAY=SU;BYHOUR=10;BYMINUTE=0;DURATION=120" }
+        locked: { type: boolean, default: false }
+        soft_tolerance_min: { type: integer, default: 0 }
+        created_at: { type: string, format: date-time }
+        etag: { type: string }
+
+    RitualCreate:
+      type: object
+      required: [title_ciphertext, rrule]
+      properties:
+        title_ciphertext: { type: string }
+        rrule: { type: string }
+        locked: { type: boolean, default: false }
+        soft_tolerance_min: { type: integer, default: 0 }
+
+    RitualUpdate:
+      type: object
+      properties:
+        title_ciphertext: { type: string }
+        rrule: { type: string }
+        locked: { type: boolean }
+        soft_tolerance_min: { type: integer }
+
+    UnexpectedEvent:
+      type: object
+      required: [id, start_at, duration_min]
+      properties:
+        id: { type: string, format: uuid }
+        start_at: { type: string, format: date-time }
+        duration_min: { type: integer, minimum: 1 }
+        note_ciphertext: { type: string, nullable: true }
+        strategy_snapshot:
+          type: object
+          additionalProperties: true
+        impact_diff:
+          type: object
+          additionalProperties: true
+        created_at: { type: string, format: date-time }
+
+    UnexpectedEventCreate:
+      type: object
+      required: [start_at, duration_min]
+      properties:
+        start_at: { type: string, format: date-time }
+        duration_min: { type: integer, minimum: 1 }
+        note_ciphertext: { type: string, nullable: true }
+        strategy:
+          type: object
+          additionalProperties: true
+        return_proposal: { type: boolean, default: true }
+
+    ReplanProposal:
+      type: object
+      properties:
+        plan_id: { type: string, format: uuid }
+        moves:
+          type: array
+          items:
+            type: object
+            properties:
+              block_id: { type: string, format: uuid }
+              from: { type: string, format: date-time }
+              to: { type: string, format: date-time }
+              reason: { type: string }
+        backlog:
+          type: array
+          items:
+            type: object
+            properties:
+              task_id: { type: string, format: uuid }
+              reason: { type: string }
+        explanations:
+          type: array
+          items: { type: string }
+
+    UnexpectedEventCreated:
+      type: object
+      properties:
+        event: { $ref: '#/components/schemas/UnexpectedEvent' }
+        proposal: { $ref: '#/components/schemas/ReplanProposal' }
+
+    ApplyPlanRequest:
+      type: object
+      required: [plan_id]
+      properties:
+        plan_id: { type: string, format: uuid }
+
+    ApplyPlanResult:
+      type: object
+      properties:
+        moved_blocks:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        backlog:
+          type: array
+          items:
+            type: object
+            properties:
+              task_id: { type: string, format: uuid }
+              reason: { type: string }
+        history_id: { type: string, format: uuid }
+
+    PlanningHistoryItem:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        occurred_at: { type: string, format: date-time }
+        action: { type: string }
+        explanation: { type: string }
+        diff:
+          type: object
+          additionalProperties: true
+
+    PaginatedRules:
+      type: object
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/AvailabilityRule' }
+        next_cursor: { type: string, nullable: true }
+
+    PaginatedOverrides:
+      type: object
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/AvailabilityOverride' }
+        next_cursor: { type: string, nullable: true }
+
+    PaginatedUnexpectedEvents:
+      type: object
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/UnexpectedEvent' }
+        next_cursor: { type: string, nullable: true }
+
+    PaginatedHistory:
+      type: object
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/PlanningHistoryItem' }
+        next_cursor: { type: string, nullable: true }
+
+    # ===== Sessions / Settings / Devices =====
+    Session:
+      type: object
+      required: [id, kind, started_at, status, etag]
+      properties:
+        id: { type: string, format: uuid }
+        user_id: { type: string, format: uuid }
+        task_id: { type: string, format: uuid, nullable: true }
+        task_block_id: { type: string, format: uuid, nullable: true }
+        kind: { type: string, enum: [pomodoro, continuous] }
+        started_at: { type: string, format: date-time }
+        ended_at: { type: string, format: date-time, nullable: true }
+        focus_minutes: { type: integer, nullable: true }
+        interruptions_min: { type: integer, default: 0 }
+        notes_ciphertext: { type: string, nullable: true }
+        status: { type: string, enum: [running, paused, ended], default: running }
+        etag: { type: string }
+
+    SessionCreate:
+      type: object
+      required: [kind]
+      properties:
+        kind: { type: string, enum: [pomodoro, continuous] }
+        task_block_id: { type: string, format: uuid, nullable: true }
+        task_id: { type: string, format: uuid, nullable: true }
+        start_at: { type: string, format: date-time, nullable: true }
+        pomodoro:
+          type: object
+          description: Optional override of work/short/long durations (minutes)
+          properties:
+            work: { type: integer, minimum: 1, default: 25 }
+            short: { type: integer, minimum: 1, default: 5 }
+            long: { type: integer, minimum: 1, default: 15 }
+
+    SessionAction:
+      type: object
+      required: [action]
+      properties:
+        action: { type: string, enum: [pause, resume, end] }
+        at: { type: string, format: date-time }
+        notes_ciphertext: { type: string, nullable: true }
+
+    PaginatedSessions:
+      type: object
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/Session' }
+        next_cursor: { type: string, nullable: true }
+
+    Settings:
+      type: object
+      required: [json, updated_at, etag]
+      properties:
+        json:
+          type: object
+          additionalProperties: true
+          description: Free-form preferences (pomodoro, planning, privacy, i18n...)
+        updated_at: { type: string, format: date-time }
+        etag: { type: string }
+
+    SettingsPut:
+      type: object
+      required: [json]
+      properties:
+        json:
+          type: object
+          additionalProperties: true
+
+    SettingsPatch:
+      type: object
+      properties:
+        json:
+          type: object
+          additionalProperties: true
+          description: Deep-merge on server side
+
+    Device:
+      type: object
+      required: [id, created_at, etag]
+      properties:
+        id: { type: string, format: uuid }
+        name_ciphertext: { type: string, nullable: true }
+        client_version: { type: string, nullable: true }
+        platform: { type: string, nullable: true }
+        capabilities:
+          type: object
+          additionalProperties: true
+        created_at: { type: string, format: date-time }
+        last_seen_at: { type: string, format: date-time, nullable: true }
+        etag: { type: string }
+
+    DeviceCreate:
+      type: object
+      properties:
+        name_ciphertext: { type: string, nullable: true }
+        client_version: { type: string, nullable: true }
+        platform: { type: string, nullable: true }
+        capabilities:
+          type: object
+          additionalProperties: true
+
+    DeviceUpdate:
+      type: object
+      properties:
+        name_ciphertext: { type: string, nullable: true }
+        client_version: { type: string, nullable: true }
+        platform: { type: string, nullable: true }
+        capabilities:
+          type: object
+          additionalProperties: true
+
+    HeartbeatRequest:
+      type: object
+      properties:
+        client_version: { type: string }
+        outbox_size: { type: integer, minimum: 0 }
+        clock: { type: string, format: date-time }
+
+    HeartbeatResponse:
+      type: object
+      properties:
+        server_time: { type: string, format: date-time }
+
+    PaginatedDevices:
+      type: object
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/Device' }
+        next_cursor: { type: string, nullable: true }
+
+paths:
+  # ===== Tasks =====
+  /v1/tasks:
+    post:
+      summary: Create a task
+      security: [ { bearerAuth: [] } ]
+      parameters: [ { $ref: '#/components/parameters/IdempotencyKey' } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/TaskCreate' }
+      responses:
+        '201':
+          description: Created
+          headers: { ETag: { schema: { type: string } } }
+          content: { application/json: { schema: { $ref: '#/components/schemas/Task' } } }
+        '400': { description: Bad Request }
+        '401': { description: Unauthorized }
+        '409': { description: Conflict (idempotency) }
+    get:
+      summary: List tasks
+      security: [ { bearerAuth: [] } ]
+      parameters:
+        - name: status
+          in: query
+          schema: { type: string, enum: [inbox, planned, completed, cancelled] }
+        - name: priority
+          in: query
+          schema: { type: string, enum: [low, normal, high] }
+        - name: is_urgent
+          in: query
+          schema: { type: boolean }
+        - name: tag_id
+          in: query
+          schema: { type: string, format: uuid }
+        - name: due_before
+          in: query
+          schema: { type: string, format: date-time }
+        - name: due_after
+          in: query
+          schema: { type: string, format: date-time }
+        - name: q
+          in: query
+          schema: { type: string }
+          description: Metadata-only search (no plaintext)
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/PaginatedTasks' } } } }
+
+  /v1/tasks/{task_id}:
+    get:
+      summary: Get a task
+      security: [ { bearerAuth: [] } ]
+      parameters: [ { name: task_id, in: path, required: true, schema: { type: string, format: uuid } } ]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Task' } } } }
+        '404': { description: Not Found }
+    patch:
+      summary: Update a task (partial)
+      security: [ { bearerAuth: [] } ]
+      parameters:
+        - { name: task_id, in: path, required: true, schema: { type: string, format: uuid } }
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/TaskUpdate' } } }
+      responses:
+        '200': { description: OK, headers: { ETag: { schema: { type: string } } }, content: { application/json: { schema: { $ref: '#/components/schemas/Task' } } } }
+        '404': { description: Not Found }
+        '409': { description: Conflict (ETag mismatch) }
+    delete:
+      summary: Delete a task
+      security: [ { bearerAuth: [] } ]
+      parameters:
+        - { name: task_id, in: path, required: true, schema: { type: string, format: uuid } }
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '204': { description: No Content }
+        '404': { description: Not Found }
+
+  /v1/tasks/{task_id}/split:
+    post:
+      summary: Split a partially-done task (create a new "rest" task)
+      security: [ { bearerAuth: [] } ]
+      parameters:
+        - { name: task_id, in: path, required: true, schema: { type: string, format: uuid } }
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                done_minutes: { type: integer, minimum: 1 }
+                done_percent: { type: number, minimum: 0, maximum: 100 }
+                create_block_for_rest: { type: boolean, default: true }
+      responses:
+        '201': { description: Created (original + rest + proposed blocks) }
+        '400': { description: Bad Request }
+        '404': { description: Not Found }
+
+  # ===== Blocks =====
+  /v1/blocks:
+    post:
+      summary: Create a task block (scheduled occurrence)
+      security: [ { bearerAuth: [] } ]
+      parameters: [ { $ref: '#/components/parameters/IdempotencyKey' } ]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/BlockCreate' } } }
+      responses:
+        '201': { description: Created, headers: { ETag: { schema: { type: string } } }, content: { application/json: { schema: { $ref: '#/components/schemas/TaskBlock' } } } }
+        '409': { description: Conflict (overlap/unavailable), content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '422': { description: Unprocessable Entity (invalid time range) }
+    get:
+      summary: List blocks by time range
+      security: [ { bearerAuth: [] } ]
+      parameters:
+        - { name: start_from, in: query, schema: { type: string, format: date-time } }
+        - { name: end_before, in: query, schema: { type: string, format: date-time } }
+        - { name: status, in: query, schema: { type: string, enum: [scheduled, in_progress, done, moved, cancelled] } }
+        - { name: task_id, in: query, schema: { type: string, format: uuid } }
+        - { name: include, in: query, schema: { type: string, enum: [task, tags] } }
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/PaginatedBlocks' } } } }
+
+  /v1/blocks/{block_id}:
+    get:
+      summary: Get a block
+      security: [ { bearerAuth: [] } ]
+      parameters: [ { name: block_id, in: path, required: true, schema: { type: string, format: uuid } } ]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/TaskBlock' } } } }
+        '404': { description: Not Found }
+    patch:
+      summary: Update a block (move/lock/status)
+      security: [ { bearerAuth: [] } ]
+      parameters:
+        - { name: block_id, in: path, required: true, schema: { type: string, format: uuid } }
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/BlockUpdate' } } }
+      responses:
+        '200': { description: OK, headers: { ETag: { schema: { type: string } } }, content: { application/json: { schema: { $ref: '#/components/schemas/TaskBlock' } } } }
+        '409': { description: Conflict (overlap/ETag mismatch) }
+        '404': { description: Not Found }
+    delete:
+      summary: Delete a block
+      security: [ { bearerAuth: [] } ]
+      parameters:
+        - { name: block_id, in: path, required: true, schema: { type: string, format: uuid } }
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '204': { description: No Content }
+        '404': { description: Not Found }
+
+  # ===== Auto-Planning (proposals + apply) =====
+  /v1/plans/auto-place:
+    post:
+      summary: Propose placements (dry-run)
+      security: [ { bearerAuth: [] } ]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/AutoPlanRequest' } } }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/AutoPlanResponse' } } } }
+
+  /v1/plans/{plan_id}/apply:
+    post:
+      summary: Apply a previously proposed plan
+      security: [ { bearerAuth: [] } ]
+      parameters:
+        - { name: plan_id, in: path, required: true, schema: { type: string, format: uuid } }
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: OK
+          content: { application/json: { schema: { $ref: '#/components/schemas/ApplyPlanResult' } } }
+        '409': { description: Conflict (state changed; recompute plan) }
+
+  # ===== Block execution shortcuts =====
+  /v1/blocks/{block_id}/start:
+    post:
+      summary: Mark block as in_progress (start)
+      security: [ { bearerAuth: [] } ]
+      parameters: [ { name: block_id, in: path, required: true, schema: { type: string, format: uuid } } ]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/TaskBlock' } } } }
+        '409': { description: Conflict (already in progress) }
+        '404': { description: Not Found }
+
+  /v1/blocks/{block_id}/done:
+    post:
+      summary: Mark block as done (complete)
+      security: [ { bearerAuth: [] } ]
+      parameters: [ { name: block_id, in: path, required: true, schema: { type: string, format: uuid } } ]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/TaskBlock' } } } }
+        '404': { description: Not Found }
+
+  /v1/blocks/{block_id}/postpone:
+    post:
+      summary: Postpone a block to next valid slot
+      security: [ { bearerAuth: [] } ]
+      parameters: [ { name: block_id, in: path, required: true, schema: { type: string, format: uuid } } ]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/PostponeRequest' } } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  moved_to: { type: string, format: date-time }
+        '409': { description: Conflict (no valid window found → backlog) }
+        '404': { description: Not Found }
+
+  # ===== Availability Rules (versioned) =====
+  /v1/availability/rules:
+    post:
+      summary: Create an availability weekly rule (versioned)
+      security: [ { bearerAuth: [] } ]
+      parameters: [ { $ref: '#/components/parameters/IdempotencyKey' } ]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/AvailabilityRuleCreate' } } }
+      responses:
+        '201': { description: Created, headers: { ETag: { schema: { type: string } } }, content: { application/json: { schema: { $ref: '#/components/schemas/AvailabilityRule' } } } }
+        '400': { description: Bad Request (overlap/invalid windows) }
+        '409': { description: Conflict (idempotency) }
+    get:
+      summary: List availability rules
+      security: [ { bearerAuth: [] } ]
+      parameters:
+        - { name: weekday, in: query, schema: { type: integer, minimum: 0, maximum: 6 } }
+        - { name: active, in: query, schema: { type: boolean } }
+        - $ref: '#/components/parameters/OnDate'
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/PaginatedRules' } } } }
+
+  /v1/availability/rules/{rule_id}:
+    get:
+      summary: Get a rule with windows
+      security: [ { bearerAuth: [] } ]
+      parameters: [ { name: rule_id, in: path, required: true, schema: { type: string, format: uuid } } ]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/AvailabilityRule' } } } }
+        '404': { description: Not Found }
+    patch:
+      summary: Update rule metadata (not the windows)
+      security: [ { bearerAuth: [] } ]
+      parameters:
+        - { name: rule_id, in: path, required: true, schema: { type: string, format: uuid } }
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/AvailabilityRuleUpdate' } } }
+      responses:
+        '200': { description: OK, headers: { ETag: { schema: { type: string } } }, content: { application/json: { schema: { $ref: '#/components/schemas/AvailabilityRule' } } } }
+        '409': { description: Conflict (ETag mismatch) }
+        '404': { description: Not Found }
+    delete:
+      summary: Close a rule (soft-delete by setting effective_until)
+      security: [ { bearerAuth: [] } ]
+      parameters:
+        - { name: rule_id, in: path, required: true, schema: { type: string, format: uuid } }
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '204': { description: No Content }
+        '404': { description: Not Found }
+
+  /v1/availability/rules/{rule_id}/windows:
+    post:
+      summary: Add a window to a rule
+      security: [ { bearerAuth: [] } ]
+      parameters:
+        - { name: rule_id, in: path, required: true, schema: { type: string, format: uuid } }
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/AvailabilityRuleWindowUpdate' } } }
+      responses:
+        '201': { description: Created, content: { application/json: { schema: { $ref: '#/components/schemas/AvailabilityRule' } } } }
+        '400': { description: Bad Request (overlap/seq) }
+        '404': { description: Not Found }
+
+  /v1/availability/rules/{rule_id}/windows/{window_id}:
+    patch:
+      summary: Update a rule window
+      security: [ { bearerAuth: [] } ]
+      parameters:
+        - { name: rule_id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: window_id, in: path, required: true, schema: { type: string, format: uuid } }
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/AvailabilityRuleWindowUpdate' } } }
+      responses:
+        '200': { description: OK }
+        '409': { description: Conflict (overlap/ETag) }
+        '404': { description: Not Found }
+    delete:
+      summary: Delete a rule window
+      security: [ { bearerAuth: [] } ]
+      parameters:
+        - { name: rule_id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: window_id, in: path, required: true, schema: { type: string, format: uuid } }
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '204': { description: No Content }
+        '404': { description: Not Found }
+
+  # ===== Availability Overrides =====
+  /v1/availability/overrides:
+    post:
+      summary: Create a dated availability override (replaces rule for that date)
+      security: [ { bearerAuth: [] } ]
+      parameters: [ { $ref: '#/components/parameters/IdempotencyKey' } ]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/AvailabilityOverrideCreate' } } }
+      responses:
+        '201': { description: Created, headers: { ETag: { schema: { type: string } } }, content: { application/json: { schema: { $ref: '#/components/schemas/AvailabilityOverride' } } } }
+        '400': { description: Bad Request (overlap) }
+        '409': { description: Conflict (override already exists) }
+    get:
+      summary: List overrides by date range
+      security: [ { bearerAuth: [] } ]
+      parameters:
+        - $ref: '#/components/parameters/DateFrom'
+        - $ref: '#/components/parameters/DateTo'
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/PaginatedOverrides' } } } }
+
+  /v1/availability/overrides/{override_id}:
+    get:
+      summary: Get an override
+      security: [ { bearerAuth: [] } ]
+      parameters: [ { name: override_id, in: path, required: true, schema: { type: string, format: uuid } } ]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/AvailabilityOverride' } } } }
+        '404': { description: Not Found }
+    patch:
+      summary: Update an override (replace all windows)
+      security: [ { bearerAuth: [] } ]
+      parameters:
+        - { name: override_id, in: path, required: true, schema: { type: string, format: uuid } }
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason: { type: string, nullable: true }
+                windows:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      seq: { type: integer, minimum: 1 }
+                      start_time: { type: string, pattern: '^[0-2][0-9]:[0-5][0-9]$' }
+                      end_time: { type: string, pattern: '^[0-2][0-9]:[0-5][0-9]$' }
+      responses:
+        '200': { description: OK }
+        '409': { description: Conflict (overlap/ETag) }
+        '404': { description: Not Found }
+    delete:
+      summary: Delete an override
+      security: [ { bearerAuth: [] } ]
+      parameters:
+        - { name: override_id, in: path, required: true, schema: { type: string, format: uuid } }
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '204': { description: No Content }
+        '404': { description: Not Found }
+
+  /v1/availability/applicable:
+    get:
+      summary: Resolve applicable availability for a given date (override > rule)
+      security: [ { bearerAuth: [] } ]
+      parameters:
+        - { name: date, in: query, required: true, schema: { type: string, format: date } }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/ApplicableAvailability' } } } }
+
+  # ===== Rituals =====
+  /v1/rituals:
+    post:
+      summary: Create a ritual
+      security: [ { bearerAuth: [] } ]
+      parameters: [ { $ref: '#/components/parameters/IdempotencyKey' } ]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/RitualCreate' } } }
+      responses:
+        '201': { description: Created, headers: { ETag: { schema: { type: string } } }, content: { application/json: { schema: { $ref: '#/components/schemas/Ritual' } } } }
+        '400': { description: Bad Request }
+    get:
+      summary: List rituals
+      security: [ { bearerAuth: [] } ]
+      parameters:
+        - { name: locked, in: query, schema: { type: boolean } }
+        - { name: q, in: query, schema: { type: string }, description: "Metadata-only search (no plaintext)" }
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/Ritual' }
+                  next_cursor: { type: string, nullable: true }
+
+  /v1/rituals/{ritual_id}:
+    get:
+      summary: Get a ritual
+      security: [ { bearerAuth: [] } ]
+      parameters: [ { name: ritual_id, in: path, required: true, schema: { type: string, format: uuid } } ]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Ritual' } } } }
+        '404': { description: Not Found }
+    patch:
+      summary: Update a ritual
+      security: [ { bearerAuth: [] } ]
+      parameters:
+        - { name: ritual_id, in: path, required: true, schema: { type: string, format: uuid } }
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/RitualUpdate' } } }
+      responses:
+        '200': { description: OK, headers: { ETag: { schema: { type: string } } }, content: { application/json: { schema: { $ref: '#/components/schemas/Ritual' } } } }
+        '409': { description: Conflict (ETag mismatch) }
+        '404': { description: Not Found }
+    delete:
+      summary: Delete a ritual
+      security: [ { bearerAuth: [] } ]
+      parameters:
+        - { name: ritual_id, in: path, required: true, schema: { type: string, format: uuid } }
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '204': { description: No Content }
+        '404': { description: Not Found }
+
+  # ===== Unexpected Events & Planning History =====
+  /v1/unexpected-events:
+    post:
+      summary: Create an unexpected event (and optionally return a replan proposal)
+      security: [ { bearerAuth: [] } ]
+      parameters: [ { $ref: '#/components/parameters/IdempotencyKey' } ]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/UnexpectedEventCreate' } } }
+      responses:
+        '201': { description: Created, content: { application/json: { schema: { $ref: '#/components/schemas/UnexpectedEventCreated' } } } }
+        '400': { description: Bad Request }
+        '409': { description: Conflict (idempotency) }
+    get:
+      summary: List unexpected events by time range
+      security: [ { bearerAuth: [] } ]
+      parameters:
+        - { name: from, in: query, schema: { type: string, format: date-time } }
+        - { name: to, in: query, schema: { type: string, format: date-time } }
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/PaginatedUnexpectedEvents' } } } }
+
+  /v1/unexpected-events/{event_id}:
+    get:
+      summary: Get an unexpected event
+      security: [ { bearerAuth: [] } ]
+      parameters: [ { name: event_id, in: path, required: true, schema: { type: string, format: uuid } } ]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/UnexpectedEvent' } } } }
+        '404': { description: Not Found }
+    delete:
+      summary: Delete an unexpected event
+      security: [ { bearerAuth: [] } ]
+      parameters: [ { name: event_id, in: path, required: true, schema: { type: string, format: uuid } } ]
+      responses:
+        '204': { description: No Content }
+        '404': { description: Not Found }
+
+  /v1/unexpected-events/{event_id}/apply:
+    post:
+      summary: Apply a previously returned replan proposal for this event
+      security: [ { bearerAuth: [] } ]
+      parameters:
+        - { name: event_id, in: path, required: true, schema: { type: string, format: uuid } }
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/ApplyPlanRequest' } } }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/ApplyPlanResult' } } } }
+        '409': { description: Conflict (state changed; recompute plan) }
+
+  /v1/planning/history:
+    get:
+      summary: List planning history entries (audit / explainability)
+      security: [ { bearerAuth: [] } ]
+      parameters:
+        - { name: from, in: query, schema: { type: string, format: date-time } }
+        - { name: to, in: query, schema: { type: string, format: date-time } }
+        - { name: action, in: query, schema: { type: string }, description: "Filter by action type (e.g., auto_replan, user_move, split)" }
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/PaginatedHistory' } } } }
+
+  # ===== Sessions =====
+  /v1/sessions:
+    post:
+      summary: Start a session (timer)
+      security: [ { bearerAuth: [] } ]
+      parameters: [ { $ref: '#/components/parameters/IdempotencyKey' } ]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/SessionCreate' } } }
+      responses:
+        '201': { description: Created, headers: { ETag: { schema: { type: string } } }, content: { application/json: { schema: { $ref: '#/components/schemas/Session' } } } }
+        '400': { description: Bad Request }
+        '409': { description: Conflict (idempotency or invalid linkage) }
+    get:
+      summary: List sessions
+      security: [ { bearerAuth: [] } ]
+      parameters:
+        - { name: from, in: query, schema: { type: string, format: date-time } }
+        - { name: to, in: query, schema: { type: string, format: date-time } }
+        - { name: status, in: query, schema: { type: string, enum: [running, paused, ended] } }
+        - { name: task_id, in: query, schema: { type: string, format: uuid } }
+        - { name: task_block_id, in: query, schema: { type: string, format: uuid } }
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/PaginatedSessions' } } } }
+
+  /v1/sessions/{session_id}:
+    get:
+      summary: Get a session
+      security: [ { bearerAuth: [] } ]
+      parameters: [ { name: session_id, in: path, required: true, schema: { type: string, format: uuid } } ]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Session' } } } }
+        '404': { description: Not Found }
+    patch:
+      summary: Update session state (pause/resume/end)
+      security: [ { bearerAuth: [] } ]
+      parameters:
+        - { name: session_id, in: path, required: true, schema: { type: string, format: uuid } }
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/SessionAction' } } }
+      responses:
+        '200': { description: OK, headers: { ETag: { schema: { type: string } } }, content: { application/json: { schema: { $ref: '#/components/schemas/Session' } } } }
+        '409': { description: Conflict (ETag mismatch or invalid action) }
+        '404': { description: Not Found }
+    delete:
+      summary: Delete a session
+      security: [ { bearerAuth: [] } ]
+      parameters:
+        - { name: session_id, in: path, required: true, schema: { type: string, format: uuid } }
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '204': { description: No Content }
+        '404': { description: Not Found }
+
+  /v1/sessions/stats:
+    get:
+      summary: Aggregate stats for sessions
+      security: [ { bearerAuth: [] } ]
+      parameters:
+        - { name: from, in: query, schema: { type: string, format: date-time } }
+        - { name: to, in: query, schema: { type: string, format: date-time } }
+        - { name: group_by, in: query, schema: { type: string, enum: [day, week, tag, task] } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  buckets:
+                    type: array
+                    items: { type: object, additionalProperties: true }
+
+  # ===== Settings =====
+  /v1/settings:
+    get:
+      summary: Get user settings document
+      security: [ { bearerAuth: [] } ]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Settings' } } } }
+    put:
+      summary: Replace settings document (full)
+      security: [ { bearerAuth: [] } ]
+      parameters: [ { $ref: '#/components/parameters/IfMatch' } ]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/SettingsPut' } } }
+      responses:
+        '200': { description: OK, headers: { ETag: { schema: { type: string } } }, content: { application/json: { schema: { $ref: '#/components/schemas/Settings' } } } }
+        '201': { description: Created (first write), headers: { ETag: { schema: { type: string } } }, content: { application/json: { schema: { $ref: '#/components/schemas/Settings' } } } }
+        '409': { description: Conflict (ETag mismatch) }
+    patch:
+      summary: Partially update settings (deep merge)
+      security: [ { bearerAuth: [] } ]
+      parameters: [ { $ref: '#/components/parameters/IfMatch' } ]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/SettingsPatch' } } }
+      responses:
+        '200': { description: OK, headers: { ETag: { schema: { type: string } } }, content: { application/json: { schema: { $ref: '#/components/schemas/Settings' } } } }
+        '409': { description: Conflict (ETag mismatch) }
+
+  # ===== Devices =====
+  /v1/devices:
+    post:
+      summary: Register a device
+      security: [ { bearerAuth: [] } ]
+      parameters: [ { $ref: '#/components/parameters/IdempotencyKey' } ]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/DeviceCreate' } } }
+      responses:
+        '201': { description: Created, headers: { ETag: { schema: { type: string } } }, content: { application/json: { schema: { $ref: '#/components/schemas/Device' } } } }
+        '400': { description: Bad Request }
+    get:
+      summary: List user's devices
+      security: [ { bearerAuth: [] } ]
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/PaginatedDevices' } } } }
+
+  /v1/devices/{device_id}:
+    patch:
+      summary: Update a device
+      security: [ { bearerAuth: [] } ]
+      parameters:
+        - { name: device_id, in: path, required: true, schema: { type: string, format: uuid } }
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/DeviceUpdate' } } }
+      responses:
+        '200': { description: OK, headers: { ETag: { schema: { type: string } } }, content: { application/json: { schema: { $ref: '#/components/schemas/Device' } } } }
+        '409': { description: Conflict (ETag mismatch) }
+        '404': { description: Not Found }
+    delete:
+      summary: Unregister a device
+      security: [ { bearerAuth: [] } ]
+      parameters:
+        - { name: device_id, in: path, required: true, schema: { type: string, format: uuid } }
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '204': { description: No Content }
+        '404': { description: Not Found }
+
+  /v1/devices/{device_id}/heartbeat:
+    post:
+      summary: Device heartbeat (update last_seen and sync diagnostics)
+      security: [ { bearerAuth: [] } ]
+      parameters: [ { name: device_id, in: path, required: true, schema: { type: string, format: uuid } } ]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/HeartbeatRequest' } } }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/HeartbeatResponse' } } } }
+
