@@ -20,3 +20,4 @@ var/
 Thumbs.db
 .idea/
 .vscode/
+.github/copilot-instructions.md
