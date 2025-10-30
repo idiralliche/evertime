@@ -1,21 +1,21 @@
 <script setup lang="ts">
-// Minimal local state; we'll replace with a store later.
-import { ref } from "vue";
+// Replace in-memory list with Dexie-powered helpers.
+import { ref, onMounted } from "vue";
 import TaskInput from "../components/TaskInput.vue";
 
-type Task = { id: string; title: string; estMin?: number; createdAt: string };
+import { getAllTasksDesc, insertTask } from "../db";
+import type { TaskRecord } from "../db";
 
-const tasks = ref<Task[]>([]);
+const tasks = ref<TaskRecord[]>([]);
 
-function handleAddTask(payload: { title: string; estMin?: number }) {
-  const now = new Date().toISOString();
-  tasks.value.unshift({
-    id: crypto.randomUUID(),
-    title: payload.title.trim(),
-    estMin: payload.estMin,
-    createdAt: now,
-  });
+async function handleAddTask(payload: { title: string; estMin?: number }) {
+  const rec = await insertTask(payload);   // persist in IndexedDB
+  tasks.value.unshift(rec);                // optimistic UI (same UX as before)
 }
+
+onMounted(async () => {
+  tasks.value = await getAllTasksDesc();   // initial load from IndexedDB
+});
 </script>
 
 <template>
