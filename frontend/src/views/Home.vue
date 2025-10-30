@@ -1,14 +1,13 @@
 <script setup lang="ts">
-// Replace in-memory array with Dexie persistence.
 import { ref, onMounted } from "vue";
 import TaskInput from "../components/TaskInput.vue";
 import { listTasks, createTaskFromInput } from "../db";
-import type { DbTask } from "../db"; // type-only import (TS verbatimModuleSyntax)
+import type { DbTask } from "../db";
+import { formatDuration } from "../utils/format";
 
-// ---- UI model used by the existing template (do NOT change selectors)
 type UiTask = { id: string; title: string; estMin?: number; createdAt: string };
 
-// ---- Base64 decode helper (UTF-8 safe)
+// base64 → UTF-8 text
 function decodeBase64(b64: string): string {
   try {
     const bin = atob(b64);
@@ -19,7 +18,6 @@ function decodeBase64(b64: string): string {
   }
 }
 
-// ---- Mapper: DbTask -> UiTask (keeps template intact)
 function toUiTask(db: DbTask): UiTask {
   return {
     id: db.id,
@@ -33,17 +31,15 @@ const tasks = ref<UiTask[]>([]);
 
 async function loadTasks() {
   const rows = await listTasks();
-  tasks.value = rows.map(toUiTask); // newest first preserved
+  tasks.value = rows.map(toUiTask);
 }
 
 async function handleAddTask(payload: { title: string; estMin?: number }) {
   const created = await createTaskFromInput(payload);
-  tasks.value.unshift(toUiTask(created)); // optimistic UI
+  tasks.value.unshift(toUiTask(created));
 }
 
-onMounted(() => {
-  void loadTasks(); // lifecycle: hydrate once on mount
-});
+onMounted(() => { void loadTasks(); });
 </script>
 
 <template>
@@ -69,7 +65,7 @@ onMounted(() => {
           <div>
             <div style="font-weight:600;">{{ t.title }}</div>
             <small class="u-muted">
-              <span v-if="t.estMin">{{ t.estMin }} min — </span>
+              <span v-if="t.estMin">{{ formatDuration(t.estMin) }} — </span>
               {{ new Date(t.createdAt).toLocaleString() }}
             </small>
           </div>
@@ -79,3 +75,4 @@ onMounted(() => {
     </div>
   </section>
 </template>
+

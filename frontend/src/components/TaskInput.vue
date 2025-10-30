@@ -1,54 +1,58 @@
 <script setup lang="ts">
 // Emits an "add" event with minimal payload { title, estMin }.
 import { ref } from "vue";
-
-const title = ref("");
-const estMin = ref<number | undefined>();
+import { parseDurationToMinutes } from "../utils/parse";
 
 const emit = defineEmits<{
   (e: "add", payload: { title: string; estMin?: number }): void;
 }>();
 
-function submit() {
+const title = ref("");
+const estimation = ref(""); // raw user input (e.g., "1h15", "90", "1:15")
+const error = ref("");
+
+function onSubmit() {
   const t = title.value.trim();
-  if (!t) return;
-  emit("add", { title: t, estMin: estMin.value });
+  if (!t) {
+    error.value = "Le titre est requis.";
+    return;
+  }
+  let estMin: number | undefined = undefined;
+  if (estimation.value.trim() !== "") {
+    const parsed = parseDurationToMinutes(estimation.value);
+    if (parsed == null) {
+      error.value = "Durée invalide. Exemples : 45, 1h, 1h15, 1:15, 90m.";
+      return;
+    }
+    estMin = parsed;
+  }
+  emit("add", { title: t, estMin });
+  // reset form
   title.value = "";
-  estMin.value = undefined;
+  estimation.value = "";
+  error.value = "";
 }
 </script>
 
 <template>
-  <form class="u-gap-4" style="display:flex; align-items:flex-start;" @submit.prevent="submit">
-    <div class="stack" style="flex:1;">
-      <label for="task-title" class="u-muted">Titre</label>
-      <input
-        id="task-title"
-        v-model="title"
-        type="text"
-        placeholder="Ex. : Appeler le dentiste"
-        class="u-radius"
-        style="width:100%; border:1px solid var(--color-muted); padding:.6rem .8rem; background:var(--color-surface);"
-        @keyup.enter="submit"
-      />
-    </div>
-
-    <div class="stack" style="width:9rem;">
-      <label for="task-est" class="u-muted">Durée (min)</label>
-      <input
-        id="task-est"
-        v-model.number="estMin"
-        type="number"
-        min="1"
-        placeholder="25"
-        class="u-radius"
-        style="width:100%; border:1px solid var(--color-muted); padding:.6rem .8rem; background:var(--color-surface);"
-        @keyup.enter="submit"
-      />
-    </div>
-
-    <div class="stack" style="margin-top:1.5rem;">
-      <button type="submit" class="btn btn--primary">Ajouter</button>
-    </div>
+  <form class="inline u-gap-4" @submit.prevent="onSubmit">
+    <input
+      type="text"
+      v-model="title"
+      placeholder="Nouvelle tâche…"
+      aria-label="Titre de la tâche"
+      class="u-radius"
+      required
+    />
+    <input
+      type="text"
+      v-model="estimation"
+      placeholder="Durée (ex: 45, 1h15, 1:15)"
+      aria-label="Durée estimée"
+      inputmode="numeric"
+      class="u-radius"
+    />
+    <button type="submit" class="btn btn--primary">Ajouter</button>
   </form>
+  <small v-if="error" class="u-muted" role="alert">{{ error }}</small>
 </template>
