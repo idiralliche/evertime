@@ -1,1 +1,6 @@
-npm test
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+set -e
+# Run unit tests in the frontend before allowing commit
+npm --prefix frontend run test
