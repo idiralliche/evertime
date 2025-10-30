@@ -1,20 +1,48 @@
 <script setup lang="ts">
-// Replace in-memory list with Dexie-powered helpers.
+// Replace in-memory array with Dexie persistence.
 import { ref, onMounted } from "vue";
 import TaskInput from "../components/TaskInput.vue";
+import { listTasks, createTaskFromInput } from "../db";
+import type { DbTask } from "../db"; // type-only import (TS verbatimModuleSyntax)
 
-import { getAllTasksDesc, insertTask } from "../db";
-import type { TaskRecord } from "../db";
+// ---- UI model used by the existing template (do NOT change selectors)
+type UiTask = { id: string; title: string; estMin?: number; createdAt: string };
 
-const tasks = ref<TaskRecord[]>([]);
-
-async function handleAddTask(payload: { title: string; estMin?: number }) {
-  const rec = await insertTask(payload);   // persist in IndexedDB
-  tasks.value.unshift(rec);                // optimistic UI (same UX as before)
+// ---- Base64 decode helper (UTF-8 safe)
+function decodeBase64(b64: string): string {
+  try {
+    const bin = atob(b64);
+    const bytes = Uint8Array.from(bin, c => c.charCodeAt(0));
+    return new TextDecoder().decode(bytes);
+  } catch {
+    return "(invalid)";
+  }
 }
 
-onMounted(async () => {
-  tasks.value = await getAllTasksDesc();   // initial load from IndexedDB
+// ---- Mapper: DbTask -> UiTask (keeps template intact)
+function toUiTask(db: DbTask): UiTask {
+  return {
+    id: db.id,
+    title: decodeBase64(db.title_ciphertext),
+    estMin: db.est_duration_min ?? undefined,
+    createdAt: db.created_at,
+  };
+}
+
+const tasks = ref<UiTask[]>([]);
+
+async function loadTasks() {
+  const rows = await listTasks();
+  tasks.value = rows.map(toUiTask); // newest first preserved
+}
+
+async function handleAddTask(payload: { title: string; estMin?: number }) {
+  const created = await createTaskFromInput(payload);
+  tasks.value.unshift(toUiTask(created)); // optimistic UI
+}
+
+onMounted(() => {
+  void loadTasks(); // lifecycle: hydrate once on mount
 });
 </script>
 
