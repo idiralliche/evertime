@@ -1,0 +1,28 @@
+// Make lists card-like, remove bullets, improve spacing and hover.
+ul.stack {
+  list-style: none; /* remove bullets */
+  padding-left: 0; /* remove default indent */
+  margin: 0;
+}
+
+ul.stack > li.u-card {
+  /* Keep card look but improve spacing and alignment */
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-6);
+  transition: transform 0.06s ease, box-shadow 0.15s ease,
+    border-color 0.15s ease;
+}
+
+ul.stack > li.u-card:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+ul.stack > li.u-card small.u-muted {
+  display: block;
+  margin-top: var(--space-1);
+  line-height: 1.4;
+}

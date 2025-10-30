@@ -5,27 +5,131 @@
   align-items: center;
   gap: var(--space-2);
   padding: 0.5rem 0.875rem;
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-md);
   border: 1px solid var(--color-muted);
   background: var(--color-surface);
+  color: var(--color-text);
+  font-weight: 500;
   box-shadow: var(--shadow-sm);
-  transition: transform 0.06s ease, background 0.15s ease;
+  transition: transform 0.06s ease, background 0.15s ease, box-shadow 0.15s ease,
+    border-color 0.15s ease;
 }
+
+/* Prefer higher-contrast background/border when supported */
+@supports (background: color-mix(in srgb, black, white)) {
+  .btn {
+    /* Slightly darker than surface to read as a real control */
+    background: color-mix(
+      in srgb,
+      var(--color-surface) 92%,
+      var(--color-text) 8%
+    );
+    border-color: color-mix(
+      in srgb,
+      var(--color-muted) 70%,
+      var(--color-text) 30%
+    );
+  }
+}
+
+/* Fallback for old browsers: subtle overlay on surface to increase contrast */
+@supports not (background: color-mix(in srgb, black, white)) {
+  .btn {
+    background: linear-gradient(0deg, rgba(0, 0, 0, 0.03), rgba(0, 0, 0, 0.03)),
+      var(--color-surface);
+    border-color: var(--color-text-muted);
+  }
+}
+
 .btn:hover {
   transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
 }
+
+/* Clear visual focus for keyboard users */
 .btn:focus-visible {
   @include mixins.focus-ring;
 }
 
+/* Primary: ensure border contrast and hover darkening */
 .btn--primary {
   background: var(--color-primary);
-  border-color: transparent;
+  border-color: color-mix(
+    in srgb,
+    var(--color-primary) 55%,
+    var(--color-text) 45%
+  );
   color: var(--color-text);
 }
 
+/* Accent: readable on both themes */
 .btn--accent {
   background: var(--color-accent);
+  border-color: color-mix(
+    in srgb,
+    var(--color-accent) 60%,
+    var(--color-text) 40%
+  );
+  color: #fff;
+}
+@supports (background: color-mix(in srgb, black, white)) {
+  .btn--accent:hover {
+    background: color-mix(
+      in srgb,
+      var(--color-accent) 88%,
+      var(--color-text) 12%
+    );
+  }
+}
+
+/* Low-emphasis action (kept, but with better border contrast) */
+.btn--ghost {
+  background: transparent;
+  border-color: color-mix(
+    in srgb,
+    var(--color-muted) 55%,
+    var(--color-text) 45%
+  );
+  box-shadow: none;
+}
+
+/* Destructive action */
+.btn--danger {
+  background: var(--color-error);
+  border-color: color-mix(
+    in srgb,
+    var(--color-error) 60%,
+    var(--color-text) 40%
+  );
+  color: #fff;
+}
+
+/* Spacing between adjacent buttons */
+.btn + .btn {
+  margin-left: var(--space-2);
+}
+
+/* Disabled state with clear affordance */
+.btn:disabled,
+.btn[aria-disabled="true"] {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.btn--ghost {
+  background: transparent;
+  border-color: var(--color-muted);
+  box-shadow: none;
+}
+
+.btn--danger {
+  background: var(--color-error);
   border-color: transparent;
   color: white;
+}
+
+.btn + .btn {
+  margin-left: var(--space-2);
 }
