@@ -78,3 +78,17 @@ export async function createTaskFromInput(payload: { title: string; estMin?: num
   await db.tasks.add(task);
   return task;
 }
+
+// Deletion helpers (single, many, all).
+export async function deleteTask(id: string): Promise<void> {
+  await db.tasks.delete(id);
+}
+
+export async function deleteTasks(ids: string[]): Promise<void> {
+  if (ids.length === 0) return;
+  await db.tasks.bulkDelete(ids);
+}
+
+export async function clearAllTasks(): Promise<void> {
+  await db.tasks.clear();
+}

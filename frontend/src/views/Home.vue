@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from "vue";
 import TaskInput from "../components/TaskInput.vue";
-import { listTasks, createTaskFromInput } from "../db";
+import { listTasks, createTaskFromInput, deleteTask, clearAllTasks } from "../db";
 import type { DbTask } from "../db";
 import { formatDuration } from "../utils/format";
 
@@ -39,6 +39,17 @@ async function handleAddTask(payload: { title: string; estMin?: number }) {
   tasks.value.unshift(toUiTask(created));
 }
 
+async function handleDeleteTask(id: string) {
+  await deleteTask(id);
+  tasks.value = tasks.value.filter(t => t.id !== id);
+}
+
+async function handleClearAll() {
+  if (!confirm("Supprimer toutes les tâches ?")) return; // safety
+  await clearAllTasks();
+  tasks.value = [];
+}
+
 onMounted(() => { void loadTasks(); });
 </script>
 
@@ -54,25 +65,32 @@ onMounted(() => { void loadTasks(); });
     </div>
 
     <div class="section stack">
-      <h2>Mes tâches</h2>
-      <ul class="stack">
-        <li
-          v-for="t in tasks"
-          :key="t.id"
-          class="u-card"
-          style="display:flex;justify-content:space-between;align-items:center;"
-        >
-          <div>
-            <div style="font-weight:600;">{{ t.title }}</div>
-            <small class="u-muted">
-              <span v-if="t.estMin">{{ formatDuration(t.estMin) }} — </span>
-              {{ new Date(t.createdAt).toLocaleString() }}
-            </small>
-          </div>
-          <button class="btn">Détails</button>
-        </li>
-      </ul>
-    </div>
+  <div style="display:flex;align-items:center;justify-content:space-between;">
+    <h2>Mes tâches</h2>
+    <button class="btn" @click="handleClearAll">Tout effacer</button>
+  </div>
+
+  <ul class="stack">
+    <li
+      v-for="t in tasks"
+      :key="t.id"
+      class="u-card"
+      style="display:flex;justify-content:space-between;align-items:center;"
+    >
+      <div>
+        <div style="font-weight:600;">{{ t.title }}</div>
+        <small class="u-muted">
+          <span v-if="t.estMin">{{ formatDuration(t.estMin) }} — </span>
+          {{ new Date(t.createdAt).toLocaleString() }}
+        </small>
+      </div>
+      <div class="inline">
+        <button class="btn">Détails</button>
+        <button class="btn" @click="handleDeleteTask(t.id)">Supprimer</button>
+      </div>
+    </li>
+  </ul>
+</div>
   </section>
 </template>
 
