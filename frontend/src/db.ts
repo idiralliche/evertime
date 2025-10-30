@@ -1,7 +1,6 @@
-// Dexie DB for offline-first tasks storage (OpenAPI-aligned shape).
+// Dexie DB for offline-first tasks storage (OpenAPI-aligned).
 import Dexie, { type Table } from 'dexie';
 
-// ---- Domain model (subset aligned with OpenAPI "Task")
 export type Priority = 'low' | 'normal' | 'high';
 export type TaskStatus = 'inbox' | 'planned' | 'completed' | 'cancelled';
 
@@ -17,37 +16,46 @@ export interface DbTask {
   status: TaskStatus;              // default: 'inbox'
   parent_task_id?: string | null;
   recurrence_series_id?: string | null;
-  tag_ids?: string[];              // empty array by default
+  tag_ids?: string[];
   created_at: string;              // ISO8601
   updated_at: string;              // ISO8601
   etag: string;                    // optimistic concurrency placeholder
 }
 
-// ---- Simple base64 placeholder (will be replaced by real client-side crypto later)
+// ---- Simple base64 placeholder (replace with real crypto later)
 function encodeBase64(plain: string): string {
-  // Browsers: btoa expects Latin1; ensure UTF-8 compatibility
   return btoa(unescape(encodeURIComponent(plain)));
 }
 
 export class EverTimeDB extends Dexie {
-  // 'Table' is a type-only import to satisfy "verbatimModuleSyntax"
+  // 'Table' is a type-only import (verbatimModuleSyntax)
   tasks!: Table<DbTask, string>;
 
   constructor() {
     super('EverTimeDB');
-    // v1 schema: primary key 'id', with useful indexes for queries
+
+    // v1 (initial schema) — kept for upgrade path
     this.version(1).stores({
-      // Indexes: status, priority, due_at, updated_at
       tasks: 'id, status, priority, due_at, updated_at'
+    });
+
+    // v2 — add missing index on created_at so we can orderBy('created_at')
+    this.version(2).stores({
+      tasks: 'id, created_at, status, priority, due_at, updated_at'
+    }).upgrade(tx => {
+      // Ensure created_at exists to build the new index
+      return tx.table('tasks').toCollection().modify((t: any) => {
+        if (!t.created_at) t.created_at = t.updated_at ?? new Date().toISOString();
+      });
     });
   }
 }
 
 export const db = new EverTimeDB();
 
-// ---- Minimal data-access helpers (read/insert)
+// ---- Data-access helpers
 export async function listTasks(): Promise<DbTask[]> {
-  // newest first by created_at
+  // newest first
   return db.tasks.orderBy('created_at').reverse().toArray();
 }
 
@@ -65,10 +73,8 @@ export async function createTaskFromInput(payload: { title: string; estMin?: num
     tag_ids: [],
     created_at: now,
     updated_at: now,
-    // Weak ETag placeholder: will be replaced by server-provided ETag post-sync
     etag: `W/"${now}"`
   };
-
   await db.tasks.add(task);
   return task;
 }
