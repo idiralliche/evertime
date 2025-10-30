@@ -1,0 +1,16 @@
+.app {
+  padding: var(--space-8) var(--space-6);
+  max-width: 72rem;
+  margin-inline: auto;
+}
+
+.section {
+  margin-block: var(--space-8);
+}
+
+.stack > * + * {
+  margin-top: var(--space-4);
+}
+.inline > * + * {
+  margin-left: var(--space-3);
+}

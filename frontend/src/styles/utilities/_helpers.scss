@@ -1,0 +1,15 @@
+@use "../tools/mixins";
+
+.u-muted {
+  color: var(--color-text-muted);
+}
+.u-card {
+  @include mixins.card;
+  padding: var(--space-4);
+}
+.u-gap-4 {
+  gap: var(--space-4);
+}
+.u-radius {
+  border-radius: var(--radius-md);
+}

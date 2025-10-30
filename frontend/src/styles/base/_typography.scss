@@ -1,0 +1,27 @@
+@use "../tools/mixins";
+
+h1 {
+  font-size: var(--h1);
+  font-weight: 700;
+  letter-spacing: -0.5px;
+}
+h2 {
+  font-size: var(--h2);
+  font-weight: 600;
+  letter-spacing: -0.25px;
+}
+h3 {
+  font-size: var(--h3);
+  font-weight: 600;
+}
+
+small {
+  font-size: var(--small);
+}
+a {
+  color: inherit;
+  text-decoration: none;
+}
+a:focus-visible {
+  @include mixins.focus-ring;
+}

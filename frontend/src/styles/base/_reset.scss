@@ -1,0 +1,39 @@
+/* Soft reset + box sizing. */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+img,
+svg,
+video {
+  display: block;
+  max-width: 100%;
+}
+button {
+  font: inherit;
+  cursor: pointer;
+}
+input,
+button,
+textarea,
+select {
+  font: inherit;
+  color: inherit;
+}
