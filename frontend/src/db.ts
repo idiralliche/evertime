@@ -79,6 +79,7 @@ export async function deleteTask(id: string): Promise<void> {
   await db.tasks.delete(id);
 }
 
+// delete many tasks by IDs (bulk)
 export async function deleteTasks(ids: string[]): Promise<void> {
   if (ids.length === 0) return;
   await db.tasks.bulkDelete(ids);
