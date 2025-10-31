@@ -19,6 +19,7 @@ function toUiTask(db: DbTask): UiTask {
 
 const tasks = ref<UiTask[]>([]);
 const selected = ref<Set<string>>(new Set());
+const open = ref<Set<string>>(new Set());
 const selectedCount = computed(() => selected.value.size);
 const allSelected = computed(() => tasks.value.length > 0 && selected.value.size === tasks.value.length);
 
@@ -39,11 +40,17 @@ async function handleAddTask(payload: { title: string; estMin?: number }) {
 function toggleOne(id: string, checked: boolean) {
   const next = new Set(selected.value);
   if (checked) next.add(id); else next.delete(id);
-  selected.value = next; // reassign to trigger reactivity
+  selected.value = next;
 }
 
 function toggleAll(checked: boolean) {
   selected.value = checked ? new Set(tasks.value.map(t => t.id)) : new Set();
+}
+
+function toggleOpen(id: string) {
+  const n = new Set(open.value);
+  n.has(id) ? n.delete(id) : n.add(id);
+  open.value = n;
 }
 
 async function bulkDeleteSelected() {
@@ -66,13 +73,6 @@ async function handleDeleteTask(id: string) {
   }
 }
 
-async function handleClearAll() {
-  if (!confirm("Supprimer toutes les tâches ?")) return;
-  await clearAllTasks();
-  tasks.value = [];
-  selected.value = new Set();
-}
-
 onMounted(() => { void loadTasks(); });
 </script>
 
@@ -83,71 +83,89 @@ onMounted(() => { void loadTasks(); });
       <p class="u-muted">Capture rapide des tâches (MVP)</p>
     </header>
 
-    <div class="u-card stack" style="margin-top: var(--space-6);">
+    <div class="task-toolbar">
+      <label style="display:inline-flex;align-items:center;gap:.5rem;cursor:pointer;">
+        <input
+          type="checkbox"
+          :checked="allSelected"
+          @change="toggleAll(($event.target as HTMLInputElement).checked)"
+          aria-label="Tout sélectionner"
+        />
+        <small class="u-muted">Tout sélectionner</small>
+      </label>
+
+      <button
+        class="btn"
+        :disabled="selectedCount === 0"
+        @click="bulkDeleteSelected"
+        :aria-disabled="selectedCount === 0"
+        :title="selectedCount ? `Supprimer la sélection (${selectedCount})` : 'Sélection vide'"
+      >
+        Supprimer la sélection ({{ selectedCount }})
+      </button>
+    </div>
+
+    <!-- Bloc de saisie -->
+    <div class="u-card stack" style="margin-top: var(--space-4);">
       <TaskInput @add="handleAddTask" />
     </div>
 
-    <div class="section stack">
-      <div style="display:flex;align-items:center;justify-content:space-between;">
-        <h2>Mes tâches</h2>
-
-        <!-- Bulk actions (minimal UI, no extra styles needed) -->
-        <div class="inline" style="align-items:center;">
-          <label style="display:inline-flex;align-items:center;gap:.5rem;cursor:pointer;">
-            <input
-              type="checkbox"
-              :checked="allSelected"
-              @change="toggleAll(($event.target as HTMLInputElement).checked)"
-              aria-label="Tout sélectionner"
-            />
-            <small class="u-muted">Tout sélectionner</small>
-          </label>
-
-          <button
-            class="btn"
-            :disabled="selectedCount === 0"
-            @click="bulkDeleteSelected"
-            :aria-disabled="selectedCount === 0"
-            :title="selectedCount ? `Supprimer ${selectedCount} sélection(s)` : 'Sélection vide'"
-          >
-            Supprimer la sélection ({{ selectedCount }})
-          </button>
-
-          <button class="btn" @click="handleClearAll">Tout effacer</button>
-        </div>
-      </div>
-
-      <ul class="stack">
-        <li
-          v-for="t in tasks"
-          :key="t.id"
-          class="u-card"
-          style="display:flex;justify-content:space-between;align-items:center;"
-        >
-          <!-- Row selection checkbox -->
-          <label style="display:flex;align-items:center;gap:.75rem;flex:1;cursor:pointer;">
+    <!-- Liste en accordéon alignée à gauche -->
+    <ul class="stack" style="margin-top: var(--space-4);">
+      <li
+        v-for="t in tasks"
+        :key="t.id"
+        class="u-card"
+        style="display:flex; flex-direction:column; gap: var(--space-3); text-align:left;"
+      >
+        <div style="display:flex; align-items:center; justify-content:space-between; gap: var(--space-4);">
+          <label style="display:flex; align-items:center; gap:.75rem; flex:1; cursor:pointer;">
             <input
               type="checkbox"
               :checked="selected.has(t.id)"
               @change="toggleOne(t.id, ($event.target as HTMLInputElement).checked)"
               :aria-label="`Sélectionner la tâche ${t.title}`"
             />
-            <div>
-              <div style="font-weight:600;">{{ t.title }}</div>
-              <small class="u-muted">
-                <span v-if="t.estMin">{{ formatDuration(t.estMin) }} — </span>
-                {{ new Date(t.createdAt).toLocaleString() }}
-              </small>
+            <div style="font-weight:600;">
+              {{ t.title }}
+              <span v-if="t.estMin" class="u-muted"> — {{ formatDuration(t.estMin) }}</span>
             </div>
           </label>
 
           <div class="inline">
-            <button class="btn">Détails</button>
-            <button class="btn" @click="handleDeleteTask(t.id)">Supprimer</button>
+            <button
+              class="btn btn--icon btn--ghost"
+              :title="open.has(t.id) ? 'Masquer les détails' : 'Détails'"
+              @click="toggleOpen(t.id)"
+              aria-label="Détails"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path
+                  :d="open.has(t.id) ? 'M7 14l5-5 5 5' : 'M8 10l4 4 4-4'"
+                  fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                />
+              </svg>
+            </button>
+
+            <button
+              class="btn btn--icon btn--ghost"
+              title="Supprimer"
+              aria-label="Supprimer"
+              @click="handleDeleteTask(t.id)"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M9 3h6m-8 4h10m-1 0-1 12a2 2 0 0 1-2 2H10a2 2 0 0 1-2-2L7 7m3 3v8m4-8v8"
+                      fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </button>
           </div>
-        </li>
-      </ul>
-    </div>
+        </div>
+
+        <div v-if="open.has(t.id)" class="task-details u-muted">
+          <small>Détails (à venir) — description, notes, priorité, échéance…</small>
+        </div>
+      </li>
+    </ul>
   </section>
 </template>
 
