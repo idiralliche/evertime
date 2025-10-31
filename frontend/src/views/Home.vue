@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from "vue";
 import TaskInput from "../components/TaskInput.vue";
-import { listTasks, createTaskFromInput, deleteTask, deleteTasks, clearAllTasks } from "../db";
+import { listTasks, createTaskFromInput, deleteTask, deleteTasks } from "../db";
 import type { DbTask } from "../db";
 import { formatDuration } from "../utils/format";
 import { decodeTitleCiphertextToPlain } from "../codec/taskCiphertext";

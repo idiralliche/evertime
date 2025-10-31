@@ -35,7 +35,8 @@ function onSubmit() {
 </script>
 
 <template>
-  <form class="inline u-gap-4" @submit.prevent="onSubmit">
+  <!-- add u-flex so gap works and we can push the button -->
+  <form class="inline u-flex u-gap-4" @submit.prevent="onSubmit">
     <input
       type="text"
       v-model="title"
@@ -52,7 +53,8 @@ function onSubmit() {
       inputmode="numeric"
       class="u-radius"
     />
-    <button type="submit" class="btn btn--primary">Ajouter</button>
+    <!-- push this button to the far right -->
+    <button type="submit" class="btn btn--primary u-ml-auto">Ajouter</button>
   </form>
   <small v-if="error" class="u-muted" role="alert">{{ error }}</small>
 </template>
