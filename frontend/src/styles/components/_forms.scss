@@ -1,5 +1,3 @@
-@use "../tools/mixins";
-
 input[type="text"],
 input[type="search"],
 input[type="number"],
@@ -12,6 +10,8 @@ textarea {
   color: var(--color-text);
   box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.04);
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  appearance: none; /* remove OS quirks */
+  outline: none; /* avoid default blue ring (Firefox/Chromium) */
 }
 
 input::placeholder,
@@ -19,8 +19,17 @@ textarea::placeholder {
   color: var(--color-text-muted);
 }
 
+input:focus,
 input:focus-visible,
+textarea:focus,
 textarea:focus-visible {
-  @include mixins.focus-ring;
-  border-color: var(--color-accent);
+  outline: none;
+  border-color: color-mix(
+    in srgb,
+    var(--color-accent) 65%,
+    var(--color-text) 35%
+  );
+  /* outer ring ~3px, WCAG-friendly contrast on light bg */
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 28%, transparent),
+    inset 0 1px 2px rgba(0, 0, 0, 0.04);
 }
