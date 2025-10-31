@@ -139,12 +139,8 @@ onMounted(() => { void loadTasks(); });
               @click="toggleOpen(t.id)"
               aria-label="Détails"
             >
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path
-                  :d="open.has(t.id) ? 'M7 14l5-5 5 5' : 'M8 10l4 4 4-4'"
-                  fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                />
-              </svg>
+              <i-lucide-chevron-up v-if="open.has(t.id)" aria-hidden="true" />
+              <i-lucide-chevron-down v-else aria-hidden="true" />
             </button>
 
             <button
@@ -153,11 +149,8 @@ onMounted(() => { void loadTasks(); });
               aria-label="Supprimer"
               @click="handleDeleteTask(t.id)"
             >
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M9 3h6m-8 4h10m-1 0-1 12a2 2 0 0 1-2 2H10a2 2 0 0 1-2-2L7 7m3 3v8m4-8v8"
-                      fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-              </svg>
-            </button>
+              <i-lucide-trash-2 aria-hidden="true" />
+          </button>
           </div>
         </div>
 
