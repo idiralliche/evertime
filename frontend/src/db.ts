@@ -1,5 +1,6 @@
 // Dexie DB for offline-first tasks storage (OpenAPI-aligned).
 import Dexie, { type Table } from 'dexie';
+import { encodeTitlePlainToCiphertext } from './codec/taskCiphertext';
 
 export type Priority = 'low' | 'normal' | 'high';
 export type TaskStatus = 'inbox' | 'planned' | 'completed' | 'cancelled';
@@ -22,13 +23,7 @@ export interface DbTask {
   etag: string;                    // optimistic concurrency placeholder
 }
 
-// ---- Simple base64 placeholder (replace with real crypto later)
-function encodeBase64(plain: string): string {
-  return btoa(unescape(encodeURIComponent(plain)));
-}
-
 export class EverTimeDB extends Dexie {
-  // 'Table' is a type-only import (verbatimModuleSyntax)
   tasks!: Table<DbTask, string>;
 
   constructor() {
@@ -63,7 +58,7 @@ export async function createTaskFromInput(payload: { title: string; estMin?: num
   const now = new Date().toISOString();
   const task: DbTask = {
     id: crypto.randomUUID(),
-    title_ciphertext: encodeBase64(payload.title.trim()),
+    title_ciphertext: encodeTitlePlainToCiphertext(payload.title),
     est_duration_min: payload.estMin ?? null,
     priority: 'normal',
     is_urgent: false,

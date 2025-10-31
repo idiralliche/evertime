@@ -4,24 +4,14 @@ import TaskInput from "../components/TaskInput.vue";
 import { listTasks, createTaskFromInput, deleteTask, clearAllTasks } from "../db";
 import type { DbTask } from "../db";
 import { formatDuration } from "../utils/format";
+import { decodeTitleCiphertextToPlain } from "../codec/taskCiphertext";
 
 type UiTask = { id: string; title: string; estMin?: number; createdAt: string };
-
-// base64 → UTF-8 text
-function decodeBase64(b64: string): string {
-  try {
-    const bin = atob(b64);
-    const bytes = Uint8Array.from(bin, c => c.charCodeAt(0));
-    return new TextDecoder().decode(bytes);
-  } catch {
-    return "(invalid)";
-  }
-}
 
 function toUiTask(db: DbTask): UiTask {
   return {
     id: db.id,
-    title: decodeBase64(db.title_ciphertext),
+    title: decodeTitleCiphertextToPlain(db.title_ciphertext),
     estMin: db.est_duration_min ?? undefined,
     createdAt: db.created_at,
   };
