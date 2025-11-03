@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // Emits "add": { title, estMin?, notes? }.
-import { ref } from "vue";
+import { ref, defineExpose } from "vue";
 import { parseDurationToMinutes } from "../utils/parse";
 
 const emit = defineEmits<{
@@ -11,6 +11,15 @@ const title = ref("");
 const estimation = ref(""); // raw user input (e.g., "1h15", "90", "1:15")
 const notes = ref("");
 const error = ref("");
+
+// Reference to the title input for autofocus
+const titleEl = ref<HTMLInputElement | null>(null);
+
+// Parent will call this method after opening the modal
+function focusFirst() {
+  titleEl.value?.focus();
+}
+defineExpose({ focusFirst });
 
 function onSubmit() {
   const t = title.value.trim();
@@ -46,6 +55,7 @@ function onSubmit() {
       <label for="task-title" class="u-muted"><small>Titre *</small></label>
       <input
         id="task-title"
+        ref="titleEl"
         type="text"
         v-model="title"
         class="form-control"
@@ -76,6 +86,8 @@ function onSubmit() {
         rows="4"
         class="form-control"
         placeholder="Notes…"
+        @keydown.ctrl.enter.prevent="onSubmit"
+        @keydown.meta.enter.prevent="onSubmit"
       ></textarea>
     </div>
 

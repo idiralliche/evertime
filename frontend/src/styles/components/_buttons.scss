@@ -188,6 +188,13 @@
 }
 
 .btn--plus {
+  background: var(--color-primary);
+  color: var(--color-text);
+  border: none;
   border-radius: 100%;
-  padding: 0.5rem 0.5rem;
+  padding: 0.5rem;
+  box-shadow: var(--shadow-sm);
+}
+.btn--plus:hover {
+  box-shadow: var(--shadow-md);
 }

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount, computed } from "vue";
+import { ref, onMounted, onBeforeUnmount, computed, nextTick } from "vue";
 import TaskInput from "../components/TaskInput.vue";
 import { listTasks, createTaskFromInput, deleteTask, deleteTasks, updateTaskNotes } from "../db";
 import type { DbTask } from "../db";
@@ -120,13 +120,19 @@ function isDirty(t: UiTask): boolean {
   return cur !== orig;
 }
 
+// Ref to child component to call focusFirst()
+const taskInputRef = ref<InstanceType<typeof TaskInput> | null>(null);
+
 function openModal() {
   isModalOpen.value = true;
   try {
     history.pushState({ modal: true }, "", "#new-task");
     pushedHistory = true;
   } catch {}
+  // Wait for modal & child to render, then focus the Title
+  void nextTick(() => taskInputRef.value?.focusFirst());
 }
+
 function closeModal() {
   isModalOpen.value = false;
   if (pushedHistory) {
@@ -267,7 +273,7 @@ onBeforeUnmount(() => {
       </li>
     </ul>
 
-    <!-- MODALE: formulaire centré -->
+    <!-- MODALE -->
     <div v-if="isModalOpen" class="modal" role="dialog" aria-modal="true" aria-labelledby="new-task-title">
       <div class="modal__overlay" @click="closeModal" />
       <div class="modal__content">
@@ -277,8 +283,8 @@ onBeforeUnmount(() => {
             <i-lucide-x aria-hidden="true" />
           </button>
         </div>
-        <!-- TaskInput dans la modale; Enter soumet; Enregistrer en bas du form -->
-        <TaskInput @add="handleAddTask" />
+        <!-- TaskInput -->
+        <TaskInput ref="taskInputRef" @add="handleAddTask" />
       </div>
     </div>
 
