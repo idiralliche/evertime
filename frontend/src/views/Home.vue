@@ -258,7 +258,7 @@ onBeforeUnmount(() => {
             :id="`notes-${t.id}`"
             v-model="t.notes"
             rows="3"
-            class="u-radius"
+            class="form-control"
             placeholder="Notes (facultatif)"
             aria-label="Notes pour la tâche"
           ></textarea>

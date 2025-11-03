@@ -1,7 +1,7 @@
 // Make lists card-like, remove bullets, improve spacing and hover.
 ul.stack {
-  list-style: none; /* remove bullets */
-  padding-left: 0; /* remove default indent */
+  list-style: none;
+  padding-left: 0;
   margin: 0;
 }
 
@@ -38,23 +38,24 @@ ul.stack > li.u-card small.u-muted {
 
 /* Align cards content to the left (accordion layout) */
 ul.stack > li.u-card {
-  align-items: stretch; /* not centered */
+  align-items: stretch;
 }
 
 /* Details panel aligns with text (left of the title block) */
 .task-details {
-  padding-left: calc(1.5rem + 0.75rem); /* checkbox (≈1.5rem) + gap (.75rem) */
+  padding-left: calc(1.5rem + 0.75rem);
   text-align: left;
 }
 
-/* Notes header row with vertical centering */
+/* Notes header */
 .task-notes-head {
   display: flex;
-  align-items: center; /* vertical alignment */
+  align-items: center;
   gap: var(--space-3);
+  margin-bottom: var(--space-2);
 }
 .task-notes-head label {
-  display: inline-flex; /* align text inside */
+  display: inline-flex;
   align-items: center;
-  line-height: 1; /* reduce baseline drift vs icon */
+  line-height: 1;
 }
