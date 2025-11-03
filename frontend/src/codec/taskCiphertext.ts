@@ -1,5 +1,5 @@
-// Codec for task title <-> ciphertext.
-// Today uses Base64 (placeholder). Can be swapped to AES-GCM later without touching db/views.
+// Generic codec for task plaintext <-> ciphertext.
+// Today uses Base64 as a placeholder. Can be swapped to AES-GCM later without touching db/views.
 
 import { encodeBase64, decodeBase64 } from '../utils/base64';
 
@@ -17,9 +17,14 @@ export function decodeCiphertext(ciphertext: string): string {
   }
 }
 
-/** Decode optional ciphertext (nullable/undefined → empty string). */
-export function decodeOptionalCiphertext(ciphertext: string | null | undefined): string {
+/**
+ * Decode optional ciphertext (nullable/undefined → empty string).
+ * @deprecated Prefer normalizing at call site:
+ *   const plain = ciphertext ? decodeCiphertext(ciphertext) : '';
+ */
+export function decodeOptionalCiphertext(
+  ciphertext: string | null | undefined
+): string {
   if (!ciphertext) return '';
   return decodeCiphertext(ciphertext);
 }
-
