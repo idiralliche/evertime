@@ -1,9 +1,10 @@
 openapi: 3.0.3
 info:
   title: UpSeed API - MVP (Tasks & Blocks, Availability/Rituals/Unexpected, Sessions/Settings/Devices)
-  version: 1.0.0
+  version: 1.1.0
   description: |
     Unified minimal REST contract for the UpSeed MVP.
+    - 1.1.0: remove tasks.notes_ciphertext (UI simplification; ciphertext stays on title only).
     Domains included: Tasks & Blocks, Auto-Planning, Availability (rules/overrides), Rituals, Unexpected Events, Planning History, Sessions (timer), Settings, Devices.
 
 servers:
@@ -80,8 +81,9 @@ components:
       required: [id, title_ciphertext, status, created_at, updated_at, etag]
       properties:
         id: { type: string, format: uuid }
-        title_ciphertext: { type: string, description: "Client-side encrypted base64" }
-        notes_ciphertext: { type: string, nullable: true }
+        title_ciphertext:
+          { type: string, description: "Client-side encrypted base64" }
+        # notes_ciphertext: REMOVED
         est_duration_min: { type: integer, minimum: 1, nullable: true }
         priority:
           type: string
@@ -89,7 +91,8 @@ components:
           default: normal
         is_urgent: { type: boolean, default: false }
         due_at: { type: string, format: date-time, nullable: true }
-        flexibility_score: { type: integer, minimum: 0, maximum: 100, default: 50 }
+        flexibility_score:
+          { type: integer, minimum: 0, maximum: 100, default: 50 }
         status:
           type: string
           enum: [inbox, planned, completed, cancelled]
@@ -108,12 +111,13 @@ components:
       required: [title_ciphertext]
       properties:
         title_ciphertext: { type: string }
-        notes_ciphertext: { type: string, nullable: true }
+        # notes_ciphertext: REMOVED
         est_duration_min: { type: integer, minimum: 1, nullable: true }
-        priority: { $ref: '#/components/schemas/Task/properties/priority' }
+        priority: { $ref: "#/components/schemas/Task/properties/priority" }
         is_urgent: { type: boolean, default: false }
         due_at: { type: string, format: date-time, nullable: true }
-        flexibility_score: { type: integer, minimum: 0, maximum: 100, default: 50 }
+        flexibility_score:
+          { type: integer, minimum: 0, maximum: 100, default: 50 }
         parent_task_id: { type: string, format: uuid, nullable: true }
         recurrence_series_id: { type: string, format: uuid, nullable: true }
         tag_ids:
@@ -124,13 +128,13 @@ components:
       type: object
       properties:
         title_ciphertext: { type: string }
-        notes_ciphertext: { type: string, nullable: true }
+        # notes_ciphertext: REMOVED
         est_duration_min: { type: integer, minimum: 1, nullable: true }
-        priority: { $ref: '#/components/schemas/Task/properties/priority' }
+        priority: { $ref: "#/components/schemas/Task/properties/priority" }
         is_urgent: { type: boolean }
         due_at: { type: string, format: date-time, nullable: true }
         flexibility_score: { type: integer, minimum: 0, maximum: 100 }
-        status: { $ref: '#/components/schemas/Task/properties/status' }
+        status: { $ref: "#/components/schemas/Task/properties/status" }
         tag_ids:
           type: array
           items: { type: string, format: uuid }
@@ -140,7 +144,7 @@ components:
       properties:
         items:
           type: array
-          items: { $ref: '#/components/schemas/Task' }
+          items: { $ref: "#/components/schemas/Task" }
         next_cursor: { type: string, nullable: true }
 
     TaskBlock:
@@ -195,7 +199,7 @@ components:
       properties:
         items:
           type: array
-          items: { $ref: '#/components/schemas/TaskBlock' }
+          items: { $ref: "#/components/schemas/TaskBlock" }
         next_cursor: { type: string, nullable: true }
 
     AutoPlanRequest:
@@ -249,21 +253,27 @@ components:
       properties:
         id: { type: string, format: uuid }
         seq: { type: integer, minimum: 1 }
-        start_time: { type: string, pattern: '^[0-2][0-9]:[0-5][0-9]$' }
-        end_time: { type: string, pattern: '^[0-2][0-9]:[0-5][0-9]$' }
+        start_time: { type: string, pattern: "^[0-2][0-9]:[0-5][0-9]$" }
+        end_time: { type: string, pattern: "^[0-2][0-9]:[0-5][0-9]$" }
 
     AvailabilityRule:
       type: object
       required: [id, weekday, effective_from, active, windows, etag]
       properties:
         id: { type: string, format: uuid }
-        weekday: { type: integer, minimum: 0, maximum: 6, description: "0=Sunday ... 6=Saturday" }
+        weekday:
+          {
+            type: integer,
+            minimum: 0,
+            maximum: 6,
+            description: "0=Sunday ... 6=Saturday",
+          }
         effective_from: { type: string, format: date }
         effective_until: { type: string, format: date, nullable: true }
         active: { type: boolean, default: true }
         windows:
           type: array
-          items: { $ref: '#/components/schemas/AvailabilityRuleWindow' }
+          items: { $ref: "#/components/schemas/AvailabilityRuleWindow" }
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
         etag: { type: string }
@@ -272,7 +282,8 @@ components:
       type: object
       required: [weekday, effective_from, windows]
       properties:
-        weekday: { $ref: '#/components/schemas/AvailabilityRule/properties/weekday' }
+        weekday:
+          { $ref: "#/components/schemas/AvailabilityRule/properties/weekday" }
         effective_from: { type: string, format: date }
         effective_until: { type: string, format: date, nullable: true }
         active: { type: boolean, default: true }
@@ -284,8 +295,8 @@ components:
             required: [seq, start_time, end_time]
             properties:
               seq: { type: integer, minimum: 1 }
-              start_time: { type: string, pattern: '^[0-2][0-9]:[0-5][0-9]$' }
-              end_time: { type: string, pattern: '^[0-2][0-9]:[0-5][0-9]$' }
+              start_time: { type: string, pattern: "^[0-2][0-9]:[0-5][0-9]$" }
+              end_time: { type: string, pattern: "^[0-2][0-9]:[0-5][0-9]$" }
 
     AvailabilityRuleUpdate:
       type: object
@@ -297,8 +308,8 @@ components:
       type: object
       properties:
         seq: { type: integer, minimum: 1 }
-        start_time: { type: string, pattern: '^[0-2][0-9]:[0-5][0-9]$' }
-        end_time: { type: string, pattern: '^[0-2][0-9]:[0-5][0-9]$' }
+        start_time: { type: string, pattern: "^[0-2][0-9]:[0-5][0-9]$" }
+        end_time: { type: string, pattern: "^[0-2][0-9]:[0-5][0-9]$" }
 
     AvailabilityOverrideWindow:
       type: object
@@ -306,8 +317,8 @@ components:
       properties:
         id: { type: string, format: uuid }
         seq: { type: integer, minimum: 1 }
-        start_time: { type: string, pattern: '^[0-2][0-9]:[0-5][0-9]$' }
-        end_time: { type: string, pattern: '^[0-2][0-9]:[0-5][0-9]$' }
+        start_time: { type: string, pattern: "^[0-2][0-9]:[0-5][0-9]$" }
+        end_time: { type: string, pattern: "^[0-2][0-9]:[0-5][0-9]$" }
 
     AvailabilityOverride:
       type: object
@@ -318,7 +329,7 @@ components:
         reason: { type: string, nullable: true }
         windows:
           type: array
-          items: { $ref: '#/components/schemas/AvailabilityOverrideWindow' }
+          items: { $ref: "#/components/schemas/AvailabilityOverrideWindow" }
         created_at: { type: string, format: date-time }
         etag: { type: string }
 
@@ -336,8 +347,8 @@ components:
             required: [seq, start_time, end_time]
             properties:
               seq: { type: integer, minimum: 1 }
-              start_time: { type: string, pattern: '^[0-2][0-9]:[0-5][0-9]$' }
-              end_time: { type: string, pattern: '^[0-2][0-9]:[0-5][0-9]$' }
+              start_time: { type: string, pattern: "^[0-2][0-9]:[0-5][0-9]$" }
+              end_time: { type: string, pattern: "^[0-2][0-9]:[0-5][0-9]$" }
 
     ApplicableAvailability:
       type: object
@@ -357,8 +368,13 @@ components:
       required: [id, title_ciphertext, rrule, locked, soft_tolerance_min, etag]
       properties:
         id: { type: string, format: uuid }
-        title_ciphertext: { type: string, description: "Client-side encrypted base64" }
-        rrule: { type: string, description: "RFC5545 RRULE e.g. FREQ=WEEKLY;BYDAY=SU;BYHOUR=10;BYMINUTE=0;DURATION=120" }
+        title_ciphertext:
+          { type: string, description: "Client-side encrypted base64" }
+        rrule:
+          {
+            type: string,
+            description: "RFC5545 RRULE e.g. FREQ=WEEKLY;BYDAY=SU;BYHOUR=10;BYMINUTE=0;DURATION=120",
+          }
         locked: { type: boolean, default: false }
         soft_tolerance_min: { type: integer, default: 0 }
         created_at: { type: string, format: date-time }
@@ -436,8 +452,8 @@ components:
     UnexpectedEventCreated:
       type: object
       properties:
-        event: { $ref: '#/components/schemas/UnexpectedEvent' }
-        proposal: { $ref: '#/components/schemas/ReplanProposal' }
+        event: { $ref: "#/components/schemas/UnexpectedEvent" }
+        proposal: { $ref: "#/components/schemas/ReplanProposal" }
 
     ApplyPlanRequest:
       type: object
@@ -478,7 +494,7 @@ components:
       properties:
         items:
           type: array
-          items: { $ref: '#/components/schemas/AvailabilityRule' }
+          items: { $ref: "#/components/schemas/AvailabilityRule" }
         next_cursor: { type: string, nullable: true }
 
     PaginatedOverrides:
@@ -486,7 +502,7 @@ components:
       properties:
         items:
           type: array
-          items: { $ref: '#/components/schemas/AvailabilityOverride' }
+          items: { $ref: "#/components/schemas/AvailabilityOverride" }
         next_cursor: { type: string, nullable: true }
 
     PaginatedUnexpectedEvents:
@@ -494,7 +510,7 @@ components:
       properties:
         items:
           type: array
-          items: { $ref: '#/components/schemas/UnexpectedEvent' }
+          items: { $ref: "#/components/schemas/UnexpectedEvent" }
         next_cursor: { type: string, nullable: true }
 
     PaginatedHistory:
@@ -502,7 +518,7 @@ components:
       properties:
         items:
           type: array
-          items: { $ref: '#/components/schemas/PlanningHistoryItem' }
+          items: { $ref: "#/components/schemas/PlanningHistoryItem" }
         next_cursor: { type: string, nullable: true }
 
     # ===== Sessions / Settings / Devices =====
@@ -520,7 +536,8 @@ components:
         focus_minutes: { type: integer, nullable: true }
         interruptions_min: { type: integer, default: 0 }
         notes_ciphertext: { type: string, nullable: true }
-        status: { type: string, enum: [running, paused, ended], default: running }
+        status:
+          { type: string, enum: [running, paused, ended], default: running }
         etag: { type: string }
 
     SessionCreate:
@@ -552,7 +569,7 @@ components:
       properties:
         items:
           type: array
-          items: { $ref: '#/components/schemas/Session' }
+          items: { $ref: "#/components/schemas/Session" }
         next_cursor: { type: string, nullable: true }
 
     Settings:
@@ -634,7 +651,7 @@ components:
       properties:
         items:
           type: array
-          items: { $ref: '#/components/schemas/Device' }
+          items: { $ref: "#/components/schemas/Device" }
         next_cursor: { type: string, nullable: true }
 
 paths:
@@ -642,24 +659,28 @@ paths:
   /v1/tasks:
     post:
       summary: Create a task
-      security: [ { bearerAuth: [] } ]
-      parameters: [ { $ref: '#/components/parameters/IdempotencyKey' } ]
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/IdempotencyKey" }]
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/TaskCreate' }
+            schema: { $ref: "#/components/schemas/TaskCreate" }
       responses:
-        '201':
+        "201":
           description: Created
           headers: { ETag: { schema: { type: string } } }
-          content: { application/json: { schema: { $ref: '#/components/schemas/Task' } } }
-        '400': { description: Bad Request }
-        '401': { description: Unauthorized }
-        '409': { description: Conflict (idempotency) }
+          content:
+            {
+              application/json:
+                { schema: { $ref: "#/components/schemas/Task" } },
+            }
+        "400": { description: Bad Request }
+        "401": { description: Unauthorized }
+        "409": { description: Conflict (idempotency) }
     get:
       summary: List tasks
-      security: [ { bearerAuth: [] } ]
+      security: [{ bearerAuth: [] }]
       parameters:
         - name: status
           in: query
@@ -683,49 +704,101 @@ paths:
           in: query
           schema: { type: string }
           description: Metadata-only search (no plaintext)
-        - $ref: '#/components/parameters/Cursor'
-        - $ref: '#/components/parameters/Limit'
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
       responses:
-        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/PaginatedTasks' } } } }
+        "200":
+          {
+            description: OK,
+            content:
+              {
+                application/json:
+                  { schema: { $ref: "#/components/schemas/PaginatedTasks" } },
+              },
+          }
 
   /v1/tasks/{task_id}:
     get:
       summary: Get a task
-      security: [ { bearerAuth: [] } ]
-      parameters: [ { name: task_id, in: path, required: true, schema: { type: string, format: uuid } } ]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        [
+          {
+            name: task_id,
+            in: path,
+            required: true,
+            schema: { type: string, format: uuid },
+          },
+        ]
       responses:
-        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Task' } } } }
-        '404': { description: Not Found }
+        "200":
+          {
+            description: OK,
+            content:
+              {
+                application/json:
+                  { schema: { $ref: "#/components/schemas/Task" } },
+              },
+          }
+        "404": { description: Not Found }
     patch:
       summary: Update a task (partial)
-      security: [ { bearerAuth: [] } ]
+      security: [{ bearerAuth: [] }]
       parameters:
-        - { name: task_id, in: path, required: true, schema: { type: string, format: uuid } }
-        - $ref: '#/components/parameters/IfMatch'
+        - {
+            name: task_id,
+            in: path,
+            required: true,
+            schema: { type: string, format: uuid },
+          }
+        - $ref: "#/components/parameters/IfMatch"
       requestBody:
         required: true
-        content: { application/json: { schema: { $ref: '#/components/schemas/TaskUpdate' } } }
+        content:
+          {
+            application/json:
+              { schema: { $ref: "#/components/schemas/TaskUpdate" } },
+          }
       responses:
-        '200': { description: OK, headers: { ETag: { schema: { type: string } } }, content: { application/json: { schema: { $ref: '#/components/schemas/Task' } } } }
-        '404': { description: Not Found }
-        '409': { description: Conflict (ETag mismatch) }
+        "200":
+          {
+            description: OK,
+            headers: { ETag: { schema: { type: string } } },
+            content:
+              {
+                application/json:
+                  { schema: { $ref: "#/components/schemas/Task" } },
+              },
+          }
+        "404": { description: Not Found }
+        "409": { description: Conflict (ETag mismatch) }
     delete:
       summary: Delete a task
-      security: [ { bearerAuth: [] } ]
+      security: [{ bearerAuth: [] }]
       parameters:
-        - { name: task_id, in: path, required: true, schema: { type: string, format: uuid } }
-        - $ref: '#/components/parameters/IfMatch'
+        - {
+            name: task_id,
+            in: path,
+            required: true,
+            schema: { type: string, format: uuid },
+          }
+        - $ref: "#/components/parameters/IfMatch"
       responses:
-        '204': { description: No Content }
-        '404': { description: Not Found }
+        "204": { description: No Content }
+        "404": { description: Not Found }
 
   /v1/tasks/{task_id}/split:
     post:
       summary: Split a partially-done task (create a new "rest" task)
-      security: [ { bearerAuth: [] } ]
+      security: [{ bearerAuth: [] }]
       parameters:
-        - { name: task_id, in: path, required: true, schema: { type: string, format: uuid } }
-        - $ref: '#/components/parameters/IdempotencyKey'
+        - {
+            name: task_id,
+            in: path,
+            required: true,
+            schema: { type: string, format: uuid },
+          }
+        - $ref: "#/components/parameters/IdempotencyKey"
       requestBody:
         required: true
         content:
@@ -737,122 +810,275 @@ paths:
                 done_percent: { type: number, minimum: 0, maximum: 100 }
                 create_block_for_rest: { type: boolean, default: true }
       responses:
-        '201': { description: Created (original + rest + proposed blocks) }
-        '400': { description: Bad Request }
-        '404': { description: Not Found }
+        "201": { description: Created (original + rest + proposed blocks) }
+        "400": { description: Bad Request }
+        "404": { description: Not Found }
 
   # ===== Blocks =====
   /v1/blocks:
     post:
       summary: Create a task block (scheduled occurrence)
-      security: [ { bearerAuth: [] } ]
-      parameters: [ { $ref: '#/components/parameters/IdempotencyKey' } ]
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/IdempotencyKey" }]
       requestBody:
         required: true
-        content: { application/json: { schema: { $ref: '#/components/schemas/BlockCreate' } } }
+        content:
+          {
+            application/json:
+              { schema: { $ref: "#/components/schemas/BlockCreate" } },
+          }
       responses:
-        '201': { description: Created, headers: { ETag: { schema: { type: string } } }, content: { application/json: { schema: { $ref: '#/components/schemas/TaskBlock' } } } }
-        '409': { description: Conflict (overlap/unavailable), content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
-        '422': { description: Unprocessable Entity (invalid time range) }
+        "201":
+          {
+            description: Created,
+            headers: { ETag: { schema: { type: string } } },
+            content:
+              {
+                application/json:
+                  { schema: { $ref: "#/components/schemas/TaskBlock" } },
+              },
+          }
+        "409":
+          {
+            description: Conflict (overlap/unavailable),
+            content:
+              {
+                application/json:
+                  { schema: { $ref: "#/components/schemas/Error" } },
+              },
+          }
+        "422": { description: Unprocessable Entity (invalid time range) }
     get:
       summary: List blocks by time range
-      security: [ { bearerAuth: [] } ]
+      security: [{ bearerAuth: [] }]
       parameters:
-        - { name: start_from, in: query, schema: { type: string, format: date-time } }
-        - { name: end_before, in: query, schema: { type: string, format: date-time } }
-        - { name: status, in: query, schema: { type: string, enum: [scheduled, in_progress, done, moved, cancelled] } }
+        - {
+            name: start_from,
+            in: query,
+            schema: { type: string, format: date-time },
+          }
+        - {
+            name: end_before,
+            in: query,
+            schema: { type: string, format: date-time },
+          }
+        - {
+            name: status,
+            in: query,
+            schema:
+              {
+                type: string,
+                enum: [scheduled, in_progress, done, moved, cancelled],
+              },
+          }
         - { name: task_id, in: query, schema: { type: string, format: uuid } }
-        - { name: include, in: query, schema: { type: string, enum: [task, tags] } }
-        - $ref: '#/components/parameters/Cursor'
-        - $ref: '#/components/parameters/Limit'
+        - {
+            name: include,
+            in: query,
+            schema: { type: string, enum: [task, tags] },
+          }
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
       responses:
-        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/PaginatedBlocks' } } } }
+        "200":
+          {
+            description: OK,
+            content:
+              {
+                application/json:
+                  { schema: { $ref: "#/components/schemas/PaginatedBlocks" } },
+              },
+          }
 
   /v1/blocks/{block_id}:
     get:
       summary: Get a block
-      security: [ { bearerAuth: [] } ]
-      parameters: [ { name: block_id, in: path, required: true, schema: { type: string, format: uuid } } ]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        [
+          {
+            name: block_id,
+            in: path,
+            required: true,
+            schema: { type: string, format: uuid },
+          },
+        ]
       responses:
-        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/TaskBlock' } } } }
-        '404': { description: Not Found }
+        "200":
+          {
+            description: OK,
+            content:
+              {
+                application/json:
+                  { schema: { $ref: "#/components/schemas/TaskBlock" } },
+              },
+          }
+        "404": { description: Not Found }
     patch:
       summary: Update a block (move/lock/status)
-      security: [ { bearerAuth: [] } ]
+      security: [{ bearerAuth: [] }]
       parameters:
-        - { name: block_id, in: path, required: true, schema: { type: string, format: uuid } }
-        - $ref: '#/components/parameters/IfMatch'
+        - {
+            name: block_id,
+            in: path,
+            required: true,
+            schema: { type: string, format: uuid },
+          }
+        - $ref: "#/components/parameters/IfMatch"
       requestBody:
         required: true
-        content: { application/json: { schema: { $ref: '#/components/schemas/BlockUpdate' } } }
+        content:
+          {
+            application/json:
+              { schema: { $ref: "#/components/schemas/BlockUpdate" } },
+          }
       responses:
-        '200': { description: OK, headers: { ETag: { schema: { type: string } } }, content: { application/json: { schema: { $ref: '#/components/schemas/TaskBlock' } } } }
-        '409': { description: Conflict (overlap/ETag mismatch) }
-        '404': { description: Not Found }
+        "200":
+          {
+            description: OK,
+            headers: { ETag: { schema: { type: string } } },
+            content:
+              {
+                application/json:
+                  { schema: { $ref: "#/components/schemas/TaskBlock" } },
+              },
+          }
+        "409": { description: Conflict (overlap/ETag mismatch) }
+        "404": { description: Not Found }
     delete:
       summary: Delete a block
-      security: [ { bearerAuth: [] } ]
+      security: [{ bearerAuth: [] }]
       parameters:
-        - { name: block_id, in: path, required: true, schema: { type: string, format: uuid } }
-        - $ref: '#/components/parameters/IfMatch'
+        - {
+            name: block_id,
+            in: path,
+            required: true,
+            schema: { type: string, format: uuid },
+          }
+        - $ref: "#/components/parameters/IfMatch"
       responses:
-        '204': { description: No Content }
-        '404': { description: Not Found }
+        "204": { description: No Content }
+        "404": { description: Not Found }
 
   # ===== Auto-Planning (proposals + apply) =====
   /v1/plans/auto-place:
     post:
       summary: Propose placements (dry-run)
-      security: [ { bearerAuth: [] } ]
+      security: [{ bearerAuth: [] }]
       requestBody:
         required: true
-        content: { application/json: { schema: { $ref: '#/components/schemas/AutoPlanRequest' } } }
+        content:
+          {
+            application/json:
+              { schema: { $ref: "#/components/schemas/AutoPlanRequest" } },
+          }
       responses:
-        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/AutoPlanResponse' } } } }
+        "200":
+          {
+            description: OK,
+            content:
+              {
+                application/json:
+                  { schema: { $ref: "#/components/schemas/AutoPlanResponse" } },
+              },
+          }
 
   /v1/plans/{plan_id}/apply:
     post:
       summary: Apply a previously proposed plan
-      security: [ { bearerAuth: [] } ]
+      security: [{ bearerAuth: [] }]
       parameters:
-        - { name: plan_id, in: path, required: true, schema: { type: string, format: uuid } }
-        - $ref: '#/components/parameters/IdempotencyKey'
+        - {
+            name: plan_id,
+            in: path,
+            required: true,
+            schema: { type: string, format: uuid },
+          }
+        - $ref: "#/components/parameters/IdempotencyKey"
       responses:
-        '200':
+        "200":
           description: OK
-          content: { application/json: { schema: { $ref: '#/components/schemas/ApplyPlanResult' } } }
-        '409': { description: Conflict (state changed; recompute plan) }
+          content:
+            {
+              application/json:
+                { schema: { $ref: "#/components/schemas/ApplyPlanResult" } },
+            }
+        "409": { description: Conflict (state changed; recompute plan) }
 
   # ===== Block execution shortcuts =====
   /v1/blocks/{block_id}/start:
     post:
       summary: Mark block as in_progress (start)
-      security: [ { bearerAuth: [] } ]
-      parameters: [ { name: block_id, in: path, required: true, schema: { type: string, format: uuid } } ]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        [
+          {
+            name: block_id,
+            in: path,
+            required: true,
+            schema: { type: string, format: uuid },
+          },
+        ]
       responses:
-        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/TaskBlock' } } } }
-        '409': { description: Conflict (already in progress) }
-        '404': { description: Not Found }
+        "200":
+          {
+            description: OK,
+            content:
+              {
+                application/json:
+                  { schema: { $ref: "#/components/schemas/TaskBlock" } },
+              },
+          }
+        "409": { description: Conflict (already in progress) }
+        "404": { description: Not Found }
 
   /v1/blocks/{block_id}/done:
     post:
       summary: Mark block as done (complete)
-      security: [ { bearerAuth: [] } ]
-      parameters: [ { name: block_id, in: path, required: true, schema: { type: string, format: uuid } } ]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        [
+          {
+            name: block_id,
+            in: path,
+            required: true,
+            schema: { type: string, format: uuid },
+          },
+        ]
       responses:
-        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/TaskBlock' } } } }
-        '404': { description: Not Found }
+        "200":
+          {
+            description: OK,
+            content:
+              {
+                application/json:
+                  { schema: { $ref: "#/components/schemas/TaskBlock" } },
+              },
+          }
+        "404": { description: Not Found }
 
   /v1/blocks/{block_id}/postpone:
     post:
       summary: Postpone a block to next valid slot
-      security: [ { bearerAuth: [] } ]
-      parameters: [ { name: block_id, in: path, required: true, schema: { type: string, format: uuid } } ]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        [
+          {
+            name: block_id,
+            in: path,
+            required: true,
+            schema: { type: string, format: uuid },
+          },
+        ]
       requestBody:
         required: true
-        content: { application/json: { schema: { $ref: '#/components/schemas/PostponeRequest' } } }
+        content:
+          {
+            application/json:
+              { schema: { $ref: "#/components/schemas/PostponeRequest" } },
+          }
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
@@ -860,144 +1086,312 @@ paths:
                 type: object
                 properties:
                   moved_to: { type: string, format: date-time }
-        '409': { description: Conflict (no valid window found → backlog) }
-        '404': { description: Not Found }
+        "409": { description: Conflict (no valid window found → backlog) }
+        "404": { description: Not Found }
 
   # ===== Availability Rules (versioned) =====
   /v1/availability/rules:
     post:
       summary: Create an availability weekly rule (versioned)
-      security: [ { bearerAuth: [] } ]
-      parameters: [ { $ref: '#/components/parameters/IdempotencyKey' } ]
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/IdempotencyKey" }]
       requestBody:
         required: true
-        content: { application/json: { schema: { $ref: '#/components/schemas/AvailabilityRuleCreate' } } }
+        content:
+          {
+            application/json:
+              {
+                schema: { $ref: "#/components/schemas/AvailabilityRuleCreate" },
+              },
+          }
       responses:
-        '201': { description: Created, headers: { ETag: { schema: { type: string } } }, content: { application/json: { schema: { $ref: '#/components/schemas/AvailabilityRule' } } } }
-        '400': { description: Bad Request (overlap/invalid windows) }
-        '409': { description: Conflict (idempotency) }
+        "201":
+          {
+            description: Created,
+            headers: { ETag: { schema: { type: string } } },
+            content:
+              {
+                application/json:
+                  { schema: { $ref: "#/components/schemas/AvailabilityRule" } },
+              },
+          }
+        "400": { description: Bad Request (overlap/invalid windows) }
+        "409": { description: Conflict (idempotency) }
     get:
       summary: List availability rules
-      security: [ { bearerAuth: [] } ]
+      security: [{ bearerAuth: [] }]
       parameters:
-        - { name: weekday, in: query, schema: { type: integer, minimum: 0, maximum: 6 } }
+        - {
+            name: weekday,
+            in: query,
+            schema: { type: integer, minimum: 0, maximum: 6 },
+          }
         - { name: active, in: query, schema: { type: boolean } }
-        - $ref: '#/components/parameters/OnDate'
-        - $ref: '#/components/parameters/Cursor'
-        - $ref: '#/components/parameters/Limit'
+        - $ref: "#/components/parameters/OnDate"
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
       responses:
-        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/PaginatedRules' } } } }
+        "200":
+          {
+            description: OK,
+            content:
+              {
+                application/json:
+                  { schema: { $ref: "#/components/schemas/PaginatedRules" } },
+              },
+          }
 
   /v1/availability/rules/{rule_id}:
     get:
       summary: Get a rule with windows
-      security: [ { bearerAuth: [] } ]
-      parameters: [ { name: rule_id, in: path, required: true, schema: { type: string, format: uuid } } ]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        [
+          {
+            name: rule_id,
+            in: path,
+            required: true,
+            schema: { type: string, format: uuid },
+          },
+        ]
       responses:
-        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/AvailabilityRule' } } } }
-        '404': { description: Not Found }
+        "200":
+          {
+            description: OK,
+            content:
+              {
+                application/json:
+                  { schema: { $ref: "#/components/schemas/AvailabilityRule" } },
+              },
+          }
+        "404": { description: Not Found }
     patch:
       summary: Update rule metadata (not the windows)
-      security: [ { bearerAuth: [] } ]
+      security: [{ bearerAuth: [] }]
       parameters:
-        - { name: rule_id, in: path, required: true, schema: { type: string, format: uuid } }
-        - $ref: '#/components/parameters/IfMatch'
+        - {
+            name: rule_id,
+            in: path,
+            required: true,
+            schema: { type: string, format: uuid },
+          }
+        - $ref: "#/components/parameters/IfMatch"
       requestBody:
         required: true
-        content: { application/json: { schema: { $ref: '#/components/schemas/AvailabilityRuleUpdate' } } }
+        content:
+          {
+            application/json:
+              {
+                schema: { $ref: "#/components/schemas/AvailabilityRuleUpdate" },
+              },
+          }
       responses:
-        '200': { description: OK, headers: { ETag: { schema: { type: string } } }, content: { application/json: { schema: { $ref: '#/components/schemas/AvailabilityRule' } } } }
-        '409': { description: Conflict (ETag mismatch) }
-        '404': { description: Not Found }
+        "200":
+          {
+            description: OK,
+            headers: { ETag: { schema: { type: string } } },
+            content:
+              {
+                application/json:
+                  { schema: { $ref: "#/components/schemas/AvailabilityRule" } },
+              },
+          }
+        "409": { description: Conflict (ETag mismatch) }
+        "404": { description: Not Found }
     delete:
       summary: Close a rule (soft-delete by setting effective_until)
-      security: [ { bearerAuth: [] } ]
+      security: [{ bearerAuth: [] }]
       parameters:
-        - { name: rule_id, in: path, required: true, schema: { type: string, format: uuid } }
-        - $ref: '#/components/parameters/IfMatch'
+        - {
+            name: rule_id,
+            in: path,
+            required: true,
+            schema: { type: string, format: uuid },
+          }
+        - $ref: "#/components/parameters/IfMatch"
       responses:
-        '204': { description: No Content }
-        '404': { description: Not Found }
+        "204": { description: No Content }
+        "404": { description: Not Found }
 
   /v1/availability/rules/{rule_id}/windows:
     post:
       summary: Add a window to a rule
-      security: [ { bearerAuth: [] } ]
+      security: [{ bearerAuth: [] }]
       parameters:
-        - { name: rule_id, in: path, required: true, schema: { type: string, format: uuid } }
-        - $ref: '#/components/parameters/IdempotencyKey'
+        - {
+            name: rule_id,
+            in: path,
+            required: true,
+            schema: { type: string, format: uuid },
+          }
+        - $ref: "#/components/parameters/IdempotencyKey"
       requestBody:
         required: true
-        content: { application/json: { schema: { $ref: '#/components/schemas/AvailabilityRuleWindowUpdate' } } }
+        content:
+          {
+            application/json:
+              {
+                schema:
+                  { $ref: "#/components/schemas/AvailabilityRuleWindowUpdate" },
+              },
+          }
       responses:
-        '201': { description: Created, content: { application/json: { schema: { $ref: '#/components/schemas/AvailabilityRule' } } } }
-        '400': { description: Bad Request (overlap/seq) }
-        '404': { description: Not Found }
+        "201":
+          {
+            description: Created,
+            content:
+              {
+                application/json:
+                  { schema: { $ref: "#/components/schemas/AvailabilityRule" } },
+              },
+          }
+        "400": { description: Bad Request (overlap/seq) }
+        "404": { description: Not Found }
 
   /v1/availability/rules/{rule_id}/windows/{window_id}:
     patch:
       summary: Update a rule window
-      security: [ { bearerAuth: [] } ]
+      security: [{ bearerAuth: [] }]
       parameters:
-        - { name: rule_id, in: path, required: true, schema: { type: string, format: uuid } }
-        - { name: window_id, in: path, required: true, schema: { type: string, format: uuid } }
-        - $ref: '#/components/parameters/IfMatch'
+        - {
+            name: rule_id,
+            in: path,
+            required: true,
+            schema: { type: string, format: uuid },
+          }
+        - {
+            name: window_id,
+            in: path,
+            required: true,
+            schema: { type: string, format: uuid },
+          }
+        - $ref: "#/components/parameters/IfMatch"
       requestBody:
         required: true
-        content: { application/json: { schema: { $ref: '#/components/schemas/AvailabilityRuleWindowUpdate' } } }
+        content:
+          {
+            application/json:
+              {
+                schema:
+                  { $ref: "#/components/schemas/AvailabilityRuleWindowUpdate" },
+              },
+          }
       responses:
-        '200': { description: OK }
-        '409': { description: Conflict (overlap/ETag) }
-        '404': { description: Not Found }
+        "200": { description: OK }
+        "409": { description: Conflict (overlap/ETag) }
+        "404": { description: Not Found }
     delete:
       summary: Delete a rule window
-      security: [ { bearerAuth: [] } ]
+      security: [{ bearerAuth: [] }]
       parameters:
-        - { name: rule_id, in: path, required: true, schema: { type: string, format: uuid } }
-        - { name: window_id, in: path, required: true, schema: { type: string, format: uuid } }
-        - $ref: '#/components/parameters/IfMatch'
+        - {
+            name: rule_id,
+            in: path,
+            required: true,
+            schema: { type: string, format: uuid },
+          }
+        - {
+            name: window_id,
+            in: path,
+            required: true,
+            schema: { type: string, format: uuid },
+          }
+        - $ref: "#/components/parameters/IfMatch"
       responses:
-        '204': { description: No Content }
-        '404': { description: Not Found }
+        "204": { description: No Content }
+        "404": { description: Not Found }
 
   # ===== Availability Overrides =====
   /v1/availability/overrides:
     post:
       summary: Create a dated availability override (replaces rule for that date)
-      security: [ { bearerAuth: [] } ]
-      parameters: [ { $ref: '#/components/parameters/IdempotencyKey' } ]
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/IdempotencyKey" }]
       requestBody:
         required: true
-        content: { application/json: { schema: { $ref: '#/components/schemas/AvailabilityOverrideCreate' } } }
+        content:
+          {
+            application/json:
+              {
+                schema:
+                  { $ref: "#/components/schemas/AvailabilityOverrideCreate" },
+              },
+          }
       responses:
-        '201': { description: Created, headers: { ETag: { schema: { type: string } } }, content: { application/json: { schema: { $ref: '#/components/schemas/AvailabilityOverride' } } } }
-        '400': { description: Bad Request (overlap) }
-        '409': { description: Conflict (override already exists) }
+        "201":
+          {
+            description: Created,
+            headers: { ETag: { schema: { type: string } } },
+            content:
+              {
+                application/json:
+                  {
+                    schema:
+                      { $ref: "#/components/schemas/AvailabilityOverride" },
+                  },
+              },
+          }
+        "400": { description: Bad Request (overlap) }
+        "409": { description: Conflict (override already exists) }
     get:
       summary: List overrides by date range
-      security: [ { bearerAuth: [] } ]
+      security: [{ bearerAuth: [] }]
       parameters:
-        - $ref: '#/components/parameters/DateFrom'
-        - $ref: '#/components/parameters/DateTo'
-        - $ref: '#/components/parameters/Cursor'
-        - $ref: '#/components/parameters/Limit'
+        - $ref: "#/components/parameters/DateFrom"
+        - $ref: "#/components/parameters/DateTo"
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
       responses:
-        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/PaginatedOverrides' } } } }
+        "200":
+          {
+            description: OK,
+            content:
+              {
+                application/json:
+                  {
+                    schema: { $ref: "#/components/schemas/PaginatedOverrides" },
+                  },
+              },
+          }
 
   /v1/availability/overrides/{override_id}:
     get:
       summary: Get an override
-      security: [ { bearerAuth: [] } ]
-      parameters: [ { name: override_id, in: path, required: true, schema: { type: string, format: uuid } } ]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        [
+          {
+            name: override_id,
+            in: path,
+            required: true,
+            schema: { type: string, format: uuid },
+          },
+        ]
       responses:
-        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/AvailabilityOverride' } } } }
-        '404': { description: Not Found }
+        "200":
+          {
+            description: OK,
+            content:
+              {
+                application/json:
+                  {
+                    schema:
+                      { $ref: "#/components/schemas/AvailabilityOverride" },
+                  },
+              },
+          }
+        "404": { description: Not Found }
     patch:
       summary: Update an override (replace all windows)
-      security: [ { bearerAuth: [] } ]
+      security: [{ bearerAuth: [] }]
       parameters:
-        - { name: override_id, in: path, required: true, schema: { type: string, format: uuid } }
-        - $ref: '#/components/parameters/IfMatch'
+        - {
+            name: override_id,
+            in: path,
+            required: true,
+            schema: { type: string, format: uuid },
+          }
+        - $ref: "#/components/parameters/IfMatch"
       requestBody:
         required: true
         content:
@@ -1012,53 +1406,94 @@ paths:
                     type: object
                     properties:
                       seq: { type: integer, minimum: 1 }
-                      start_time: { type: string, pattern: '^[0-2][0-9]:[0-5][0-9]$' }
-                      end_time: { type: string, pattern: '^[0-2][0-9]:[0-5][0-9]$' }
+                      start_time:
+                        { type: string, pattern: "^[0-2][0-9]:[0-5][0-9]$" }
+                      end_time:
+                        { type: string, pattern: "^[0-2][0-9]:[0-5][0-9]$" }
       responses:
-        '200': { description: OK }
-        '409': { description: Conflict (overlap/ETag) }
-        '404': { description: Not Found }
+        "200": { description: OK }
+        "409": { description: Conflict (overlap/ETag) }
+        "404": { description: Not Found }
     delete:
       summary: Delete an override
-      security: [ { bearerAuth: [] } ]
+      security: [{ bearerAuth: [] }]
       parameters:
-        - { name: override_id, in: path, required: true, schema: { type: string, format: uuid } }
-        - $ref: '#/components/parameters/IfMatch'
+        - {
+            name: override_id,
+            in: path,
+            required: true,
+            schema: { type: string, format: uuid },
+          }
+        - $ref: "#/components/parameters/IfMatch"
       responses:
-        '204': { description: No Content }
-        '404': { description: Not Found }
+        "204": { description: No Content }
+        "404": { description: Not Found }
 
   /v1/availability/applicable:
     get:
       summary: Resolve applicable availability for a given date (override > rule)
-      security: [ { bearerAuth: [] } ]
+      security: [{ bearerAuth: [] }]
       parameters:
-        - { name: date, in: query, required: true, schema: { type: string, format: date } }
+        - {
+            name: date,
+            in: query,
+            required: true,
+            schema: { type: string, format: date },
+          }
       responses:
-        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/ApplicableAvailability' } } } }
+        "200":
+          {
+            description: OK,
+            content:
+              {
+                application/json:
+                  {
+                    schema:
+                      { $ref: "#/components/schemas/ApplicableAvailability" },
+                  },
+              },
+          }
 
   # ===== Rituals =====
   /v1/rituals:
     post:
       summary: Create a ritual
-      security: [ { bearerAuth: [] } ]
-      parameters: [ { $ref: '#/components/parameters/IdempotencyKey' } ]
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/IdempotencyKey" }]
       requestBody:
         required: true
-        content: { application/json: { schema: { $ref: '#/components/schemas/RitualCreate' } } }
+        content:
+          {
+            application/json:
+              { schema: { $ref: "#/components/schemas/RitualCreate" } },
+          }
       responses:
-        '201': { description: Created, headers: { ETag: { schema: { type: string } } }, content: { application/json: { schema: { $ref: '#/components/schemas/Ritual' } } } }
-        '400': { description: Bad Request }
+        "201":
+          {
+            description: Created,
+            headers: { ETag: { schema: { type: string } } },
+            content:
+              {
+                application/json:
+                  { schema: { $ref: "#/components/schemas/Ritual" } },
+              },
+          }
+        "400": { description: Bad Request }
     get:
       summary: List rituals
-      security: [ { bearerAuth: [] } ]
+      security: [{ bearerAuth: [] }]
       parameters:
         - { name: locked, in: query, schema: { type: boolean } }
-        - { name: q, in: query, schema: { type: string }, description: "Metadata-only search (no plaintext)" }
-        - $ref: '#/components/parameters/Cursor'
-        - $ref: '#/components/parameters/Limit'
+        - {
+            name: q,
+            in: query,
+            schema: { type: string },
+            description: "Metadata-only search (no plaintext)",
+          }
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
@@ -1067,175 +1502,372 @@ paths:
                 properties:
                   items:
                     type: array
-                    items: { $ref: '#/components/schemas/Ritual' }
+                    items: { $ref: "#/components/schemas/Ritual" }
                   next_cursor: { type: string, nullable: true }
 
   /v1/rituals/{ritual_id}:
     get:
       summary: Get a ritual
-      security: [ { bearerAuth: [] } ]
-      parameters: [ { name: ritual_id, in: path, required: true, schema: { type: string, format: uuid } } ]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        [
+          {
+            name: ritual_id,
+            in: path,
+            required: true,
+            schema: { type: string, format: uuid },
+          },
+        ]
       responses:
-        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Ritual' } } } }
-        '404': { description: Not Found }
+        "200":
+          {
+            description: OK,
+            content:
+              {
+                application/json:
+                  { schema: { $ref: "#/components/schemas/Ritual" } },
+              },
+          }
+        "404": { description: Not Found }
     patch:
       summary: Update a ritual
-      security: [ { bearerAuth: [] } ]
+      security: [{ bearerAuth: [] }]
       parameters:
-        - { name: ritual_id, in: path, required: true, schema: { type: string, format: uuid } }
-        - $ref: '#/components/parameters/IfMatch'
+        - {
+            name: ritual_id,
+            in: path,
+            required: true,
+            schema: { type: string, format: uuid },
+          }
+        - $ref: "#/components/parameters/IfMatch"
       requestBody:
         required: true
-        content: { application/json: { schema: { $ref: '#/components/schemas/RitualUpdate' } } }
+        content:
+          {
+            application/json:
+              { schema: { $ref: "#/components/schemas/RitualUpdate" } },
+          }
       responses:
-        '200': { description: OK, headers: { ETag: { schema: { type: string } } }, content: { application/json: { schema: { $ref: '#/components/schemas/Ritual' } } } }
-        '409': { description: Conflict (ETag mismatch) }
-        '404': { description: Not Found }
+        "200":
+          {
+            description: OK,
+            headers: { ETag: { schema: { type: string } } },
+            content:
+              {
+                application/json:
+                  { schema: { $ref: "#/components/schemas/Ritual" } },
+              },
+          }
+        "409": { description: Conflict (ETag mismatch) }
+        "404": { description: Not Found }
     delete:
       summary: Delete a ritual
-      security: [ { bearerAuth: [] } ]
+      security: [{ bearerAuth: [] }]
       parameters:
-        - { name: ritual_id, in: path, required: true, schema: { type: string, format: uuid } }
-        - $ref: '#/components/parameters/IfMatch'
+        - {
+            name: ritual_id,
+            in: path,
+            required: true,
+            schema: { type: string, format: uuid },
+          }
+        - $ref: "#/components/parameters/IfMatch"
       responses:
-        '204': { description: No Content }
-        '404': { description: Not Found }
+        "204": { description: No Content }
+        "404": { description: Not Found }
 
   # ===== Unexpected Events & Planning History =====
   /v1/unexpected-events:
     post:
       summary: Create an unexpected event (and optionally return a replan proposal)
-      security: [ { bearerAuth: [] } ]
-      parameters: [ { $ref: '#/components/parameters/IdempotencyKey' } ]
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/IdempotencyKey" }]
       requestBody:
         required: true
-        content: { application/json: { schema: { $ref: '#/components/schemas/UnexpectedEventCreate' } } }
+        content:
+          {
+            application/json:
+              {
+                schema: { $ref: "#/components/schemas/UnexpectedEventCreate" },
+              },
+          }
       responses:
-        '201': { description: Created, content: { application/json: { schema: { $ref: '#/components/schemas/UnexpectedEventCreated' } } } }
-        '400': { description: Bad Request }
-        '409': { description: Conflict (idempotency) }
+        "201":
+          {
+            description: Created,
+            content:
+              {
+                application/json:
+                  {
+                    schema:
+                      { $ref: "#/components/schemas/UnexpectedEventCreated" },
+                  },
+              },
+          }
+        "400": { description: Bad Request }
+        "409": { description: Conflict (idempotency) }
     get:
       summary: List unexpected events by time range
-      security: [ { bearerAuth: [] } ]
+      security: [{ bearerAuth: [] }]
       parameters:
         - { name: from, in: query, schema: { type: string, format: date-time } }
         - { name: to, in: query, schema: { type: string, format: date-time } }
-        - $ref: '#/components/parameters/Cursor'
-        - $ref: '#/components/parameters/Limit'
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
       responses:
-        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/PaginatedUnexpectedEvents' } } } }
+        "200":
+          {
+            description: OK,
+            content:
+              {
+                application/json:
+                  {
+                    schema:
+                      {
+                        $ref: "#/components/schemas/PaginatedUnexpectedEvents",
+                      },
+                  },
+              },
+          }
 
   /v1/unexpected-events/{event_id}:
     get:
       summary: Get an unexpected event
-      security: [ { bearerAuth: [] } ]
-      parameters: [ { name: event_id, in: path, required: true, schema: { type: string, format: uuid } } ]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        [
+          {
+            name: event_id,
+            in: path,
+            required: true,
+            schema: { type: string, format: uuid },
+          },
+        ]
       responses:
-        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/UnexpectedEvent' } } } }
-        '404': { description: Not Found }
+        "200":
+          {
+            description: OK,
+            content:
+              {
+                application/json:
+                  { schema: { $ref: "#/components/schemas/UnexpectedEvent" } },
+              },
+          }
+        "404": { description: Not Found }
     delete:
       summary: Delete an unexpected event
-      security: [ { bearerAuth: [] } ]
-      parameters: [ { name: event_id, in: path, required: true, schema: { type: string, format: uuid } } ]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        [
+          {
+            name: event_id,
+            in: path,
+            required: true,
+            schema: { type: string, format: uuid },
+          },
+        ]
       responses:
-        '204': { description: No Content }
-        '404': { description: Not Found }
+        "204": { description: No Content }
+        "404": { description: Not Found }
 
   /v1/unexpected-events/{event_id}/apply:
     post:
       summary: Apply a previously returned replan proposal for this event
-      security: [ { bearerAuth: [] } ]
+      security: [{ bearerAuth: [] }]
       parameters:
-        - { name: event_id, in: path, required: true, schema: { type: string, format: uuid } }
-        - $ref: '#/components/parameters/IdempotencyKey'
+        - {
+            name: event_id,
+            in: path,
+            required: true,
+            schema: { type: string, format: uuid },
+          }
+        - $ref: "#/components/parameters/IdempotencyKey"
       requestBody:
         required: true
-        content: { application/json: { schema: { $ref: '#/components/schemas/ApplyPlanRequest' } } }
+        content:
+          {
+            application/json:
+              { schema: { $ref: "#/components/schemas/ApplyPlanRequest" } },
+          }
       responses:
-        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/ApplyPlanResult' } } } }
-        '409': { description: Conflict (state changed; recompute plan) }
+        "200":
+          {
+            description: OK,
+            content:
+              {
+                application/json:
+                  { schema: { $ref: "#/components/schemas/ApplyPlanResult" } },
+              },
+          }
+        "409": { description: Conflict (state changed; recompute plan) }
 
   /v1/planning/history:
     get:
       summary: List planning history entries (audit / explainability)
-      security: [ { bearerAuth: [] } ]
+      security: [{ bearerAuth: [] }]
       parameters:
         - { name: from, in: query, schema: { type: string, format: date-time } }
         - { name: to, in: query, schema: { type: string, format: date-time } }
-        - { name: action, in: query, schema: { type: string }, description: "Filter by action type (e.g., auto_replan, user_move, split)" }
-        - $ref: '#/components/parameters/Cursor'
-        - $ref: '#/components/parameters/Limit'
+        - {
+            name: action,
+            in: query,
+            schema: { type: string },
+            description: "Filter by action type (e.g., auto_replan, user_move, split)",
+          }
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
       responses:
-        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/PaginatedHistory' } } } }
+        "200":
+          {
+            description: OK,
+            content:
+              {
+                application/json:
+                  { schema: { $ref: "#/components/schemas/PaginatedHistory" } },
+              },
+          }
 
   # ===== Sessions =====
   /v1/sessions:
     post:
       summary: Start a session (timer)
-      security: [ { bearerAuth: [] } ]
-      parameters: [ { $ref: '#/components/parameters/IdempotencyKey' } ]
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/IdempotencyKey" }]
       requestBody:
         required: true
-        content: { application/json: { schema: { $ref: '#/components/schemas/SessionCreate' } } }
+        content:
+          {
+            application/json:
+              { schema: { $ref: "#/components/schemas/SessionCreate" } },
+          }
       responses:
-        '201': { description: Created, headers: { ETag: { schema: { type: string } } }, content: { application/json: { schema: { $ref: '#/components/schemas/Session' } } } }
-        '400': { description: Bad Request }
-        '409': { description: Conflict (idempotency or invalid linkage) }
+        "201":
+          {
+            description: Created,
+            headers: { ETag: { schema: { type: string } } },
+            content:
+              {
+                application/json:
+                  { schema: { $ref: "#/components/schemas/Session" } },
+              },
+          }
+        "400": { description: Bad Request }
+        "409": { description: Conflict (idempotency or invalid linkage) }
     get:
       summary: List sessions
-      security: [ { bearerAuth: [] } ]
+      security: [{ bearerAuth: [] }]
       parameters:
         - { name: from, in: query, schema: { type: string, format: date-time } }
         - { name: to, in: query, schema: { type: string, format: date-time } }
-        - { name: status, in: query, schema: { type: string, enum: [running, paused, ended] } }
+        - {
+            name: status,
+            in: query,
+            schema: { type: string, enum: [running, paused, ended] },
+          }
         - { name: task_id, in: query, schema: { type: string, format: uuid } }
-        - { name: task_block_id, in: query, schema: { type: string, format: uuid } }
-        - $ref: '#/components/parameters/Cursor'
-        - $ref: '#/components/parameters/Limit'
+        - {
+            name: task_block_id,
+            in: query,
+            schema: { type: string, format: uuid },
+          }
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
       responses:
-        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/PaginatedSessions' } } } }
+        "200":
+          {
+            description: OK,
+            content:
+              {
+                application/json:
+                  {
+                    schema: { $ref: "#/components/schemas/PaginatedSessions" },
+                  },
+              },
+          }
 
   /v1/sessions/{session_id}:
     get:
       summary: Get a session
-      security: [ { bearerAuth: [] } ]
-      parameters: [ { name: session_id, in: path, required: true, schema: { type: string, format: uuid } } ]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        [
+          {
+            name: session_id,
+            in: path,
+            required: true,
+            schema: { type: string, format: uuid },
+          },
+        ]
       responses:
-        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Session' } } } }
-        '404': { description: Not Found }
+        "200":
+          {
+            description: OK,
+            content:
+              {
+                application/json:
+                  { schema: { $ref: "#/components/schemas/Session" } },
+              },
+          }
+        "404": { description: Not Found }
     patch:
       summary: Update session state (pause/resume/end)
-      security: [ { bearerAuth: [] } ]
+      security: [{ bearerAuth: [] }]
       parameters:
-        - { name: session_id, in: path, required: true, schema: { type: string, format: uuid } }
-        - $ref: '#/components/parameters/IfMatch'
+        - {
+            name: session_id,
+            in: path,
+            required: true,
+            schema: { type: string, format: uuid },
+          }
+        - $ref: "#/components/parameters/IfMatch"
       requestBody:
         required: true
-        content: { application/json: { schema: { $ref: '#/components/schemas/SessionAction' } } }
+        content:
+          {
+            application/json:
+              { schema: { $ref: "#/components/schemas/SessionAction" } },
+          }
       responses:
-        '200': { description: OK, headers: { ETag: { schema: { type: string } } }, content: { application/json: { schema: { $ref: '#/components/schemas/Session' } } } }
-        '409': { description: Conflict (ETag mismatch or invalid action) }
-        '404': { description: Not Found }
+        "200":
+          {
+            description: OK,
+            headers: { ETag: { schema: { type: string } } },
+            content:
+              {
+                application/json:
+                  { schema: { $ref: "#/components/schemas/Session" } },
+              },
+          }
+        "409": { description: Conflict (ETag mismatch or invalid action) }
+        "404": { description: Not Found }
     delete:
       summary: Delete a session
-      security: [ { bearerAuth: [] } ]
+      security: [{ bearerAuth: [] }]
       parameters:
-        - { name: session_id, in: path, required: true, schema: { type: string, format: uuid } }
-        - $ref: '#/components/parameters/IfMatch'
+        - {
+            name: session_id,
+            in: path,
+            required: true,
+            schema: { type: string, format: uuid },
+          }
+        - $ref: "#/components/parameters/IfMatch"
       responses:
-        '204': { description: No Content }
-        '404': { description: Not Found }
+        "204": { description: No Content }
+        "404": { description: Not Found }
 
   /v1/sessions/stats:
     get:
       summary: Aggregate stats for sessions
-      security: [ { bearerAuth: [] } ]
+      security: [{ bearerAuth: [] }]
       parameters:
         - { name: from, in: query, schema: { type: string, format: date-time } }
         - { name: to, in: query, schema: { type: string, format: date-time } }
-        - { name: group_by, in: query, schema: { type: string, enum: [day, week, tag, task] } }
+        - {
+            name: group_by,
+            in: query,
+            schema: { type: string, enum: [day, week, tag, task] },
+          }
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
@@ -1250,84 +1882,192 @@ paths:
   /v1/settings:
     get:
       summary: Get user settings document
-      security: [ { bearerAuth: [] } ]
+      security: [{ bearerAuth: [] }]
       responses:
-        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Settings' } } } }
+        "200":
+          {
+            description: OK,
+            content:
+              {
+                application/json:
+                  { schema: { $ref: "#/components/schemas/Settings" } },
+              },
+          }
     put:
       summary: Replace settings document (full)
-      security: [ { bearerAuth: [] } ]
-      parameters: [ { $ref: '#/components/parameters/IfMatch' } ]
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/IfMatch" }]
       requestBody:
         required: true
-        content: { application/json: { schema: { $ref: '#/components/schemas/SettingsPut' } } }
+        content:
+          {
+            application/json:
+              { schema: { $ref: "#/components/schemas/SettingsPut" } },
+          }
       responses:
-        '200': { description: OK, headers: { ETag: { schema: { type: string } } }, content: { application/json: { schema: { $ref: '#/components/schemas/Settings' } } } }
-        '201': { description: Created (first write), headers: { ETag: { schema: { type: string } } }, content: { application/json: { schema: { $ref: '#/components/schemas/Settings' } } } }
-        '409': { description: Conflict (ETag mismatch) }
+        "200":
+          {
+            description: OK,
+            headers: { ETag: { schema: { type: string } } },
+            content:
+              {
+                application/json:
+                  { schema: { $ref: "#/components/schemas/Settings" } },
+              },
+          }
+        "201":
+          {
+            description: Created (first write),
+            headers: { ETag: { schema: { type: string } } },
+            content:
+              {
+                application/json:
+                  { schema: { $ref: "#/components/schemas/Settings" } },
+              },
+          }
+        "409": { description: Conflict (ETag mismatch) }
     patch:
       summary: Partially update settings (deep merge)
-      security: [ { bearerAuth: [] } ]
-      parameters: [ { $ref: '#/components/parameters/IfMatch' } ]
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/IfMatch" }]
       requestBody:
         required: true
-        content: { application/json: { schema: { $ref: '#/components/schemas/SettingsPatch' } } }
+        content:
+          {
+            application/json:
+              { schema: { $ref: "#/components/schemas/SettingsPatch" } },
+          }
       responses:
-        '200': { description: OK, headers: { ETag: { schema: { type: string } } }, content: { application/json: { schema: { $ref: '#/components/schemas/Settings' } } } }
-        '409': { description: Conflict (ETag mismatch) }
+        "200":
+          {
+            description: OK,
+            headers: { ETag: { schema: { type: string } } },
+            content:
+              {
+                application/json:
+                  { schema: { $ref: "#/components/schemas/Settings" } },
+              },
+          }
+        "409": { description: Conflict (ETag mismatch) }
 
   # ===== Devices =====
   /v1/devices:
     post:
       summary: Register a device
-      security: [ { bearerAuth: [] } ]
-      parameters: [ { $ref: '#/components/parameters/IdempotencyKey' } ]
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/IdempotencyKey" }]
       requestBody:
         required: true
-        content: { application/json: { schema: { $ref: '#/components/schemas/DeviceCreate' } } }
+        content:
+          {
+            application/json:
+              { schema: { $ref: "#/components/schemas/DeviceCreate" } },
+          }
       responses:
-        '201': { description: Created, headers: { ETag: { schema: { type: string } } }, content: { application/json: { schema: { $ref: '#/components/schemas/Device' } } } }
-        '400': { description: Bad Request }
+        "201":
+          {
+            description: Created,
+            headers: { ETag: { schema: { type: string } } },
+            content:
+              {
+                application/json:
+                  { schema: { $ref: "#/components/schemas/Device" } },
+              },
+          }
+        "400": { description: Bad Request }
     get:
       summary: List user's devices
-      security: [ { bearerAuth: [] } ]
+      security: [{ bearerAuth: [] }]
       parameters:
-        - $ref: '#/components/parameters/Cursor'
-        - $ref: '#/components/parameters/Limit'
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
       responses:
-        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/PaginatedDevices' } } } }
+        "200":
+          {
+            description: OK,
+            content:
+              {
+                application/json:
+                  { schema: { $ref: "#/components/schemas/PaginatedDevices" } },
+              },
+          }
 
   /v1/devices/{device_id}:
     patch:
       summary: Update a device
-      security: [ { bearerAuth: [] } ]
+      security: [{ bearerAuth: [] }]
       parameters:
-        - { name: device_id, in: path, required: true, schema: { type: string, format: uuid } }
-        - $ref: '#/components/parameters/IfMatch'
+        - {
+            name: device_id,
+            in: path,
+            required: true,
+            schema: { type: string, format: uuid },
+          }
+        - $ref: "#/components/parameters/IfMatch"
       requestBody:
         required: true
-        content: { application/json: { schema: { $ref: '#/components/schemas/DeviceUpdate' } } }
+        content:
+          {
+            application/json:
+              { schema: { $ref: "#/components/schemas/DeviceUpdate" } },
+          }
       responses:
-        '200': { description: OK, headers: { ETag: { schema: { type: string } } }, content: { application/json: { schema: { $ref: '#/components/schemas/Device' } } } }
-        '409': { description: Conflict (ETag mismatch) }
-        '404': { description: Not Found }
+        "200":
+          {
+            description: OK,
+            headers: { ETag: { schema: { type: string } } },
+            content:
+              {
+                application/json:
+                  { schema: { $ref: "#/components/schemas/Device" } },
+              },
+          }
+        "409": { description: Conflict (ETag mismatch) }
+        "404": { description: Not Found }
     delete:
       summary: Unregister a device
-      security: [ { bearerAuth: [] } ]
+      security: [{ bearerAuth: [] }]
       parameters:
-        - { name: device_id, in: path, required: true, schema: { type: string, format: uuid } }
-        - $ref: '#/components/parameters/IfMatch'
+        - {
+            name: device_id,
+            in: path,
+            required: true,
+            schema: { type: string, format: uuid },
+          }
+        - $ref: "#/components/parameters/IfMatch"
       responses:
-        '204': { description: No Content }
-        '404': { description: Not Found }
+        "204": { description: No Content }
+        "404": { description: Not Found }
 
   /v1/devices/{device_id}/heartbeat:
     post:
       summary: Device heartbeat (update last_seen and sync diagnostics)
-      security: [ { bearerAuth: [] } ]
-      parameters: [ { name: device_id, in: path, required: true, schema: { type: string, format: uuid } } ]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        [
+          {
+            name: device_id,
+            in: path,
+            required: true,
+            schema: { type: string, format: uuid },
+          },
+        ]
       requestBody:
         required: true
-        content: { application/json: { schema: { $ref: '#/components/schemas/HeartbeatRequest' } } }
+        content:
+          {
+            application/json:
+              { schema: { $ref: "#/components/schemas/HeartbeatRequest" } },
+          }
       responses:
-        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/HeartbeatResponse' } } } }
-
+        "200":
+          {
+            description: OK,
+            content:
+              {
+                application/json:
+                  {
+                    schema: { $ref: "#/components/schemas/HeartbeatResponse" },
+                  },
+              },
+          }
