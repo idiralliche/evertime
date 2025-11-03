@@ -1,0 +1,43 @@
+// basic centered modal with overlay; content uses the card mixin.
+@use "../tools/mixins" as *;
+
+.modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+}
+
+.modal__overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  backdrop-filter: saturate(110%) blur(2px);
+}
+
+.modal__content {
+  position: relative;
+  width: min(720px, calc(100vw - 2rem));
+  max-height: calc(100vh - 2rem);
+  overflow: auto;
+  padding: var(--space-6);
+  @include card;
+  background: var(--color-bg);
+}
+
+.modal__header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+.modal__title {
+  font-weight: 700;
+  font-size: var(--h2);
+}
+
+.modal__close.btn--icon {
+  margin-left: auto;
+}

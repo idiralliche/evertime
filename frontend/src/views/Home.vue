@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from "vue";
+import { ref, onMounted, onBeforeUnmount, computed } from "vue";
 import TaskInput from "../components/TaskInput.vue";
 import { listTasks, createTaskFromInput, deleteTask, deleteTasks, updateTaskNotes } from "../db";
 import type { DbTask } from "../db";
@@ -33,6 +33,9 @@ const notesOriginal = ref<Record<string, string>>({});
 const selectedCount = computed(() => selected.value.size);
 const allSelected = computed(() => tasks.value.length > 0 && selected.value.size === tasks.value.length);
 
+const isModalOpen = ref(false);
+let pushedHistory = false;
+
 async function loadTasks() {
   const rows = await listTasks();
   tasks.value = rows.map(toUiTask);
@@ -48,6 +51,7 @@ async function loadTasks() {
 async function handleAddTask(payload: { title: string; estMin?: number; notes?: string }) {
   const created = await createTaskFromInput(payload);
   tasks.value.unshift(toUiTask(created));
+  closeModal();
 }
 
 function toggleOne(id: string, checked: boolean) {
@@ -116,7 +120,37 @@ function isDirty(t: UiTask): boolean {
   return cur !== orig;
 }
 
-onMounted(() => { void loadTasks(); });
+function openModal() {
+  isModalOpen.value = true;
+  try {
+    history.pushState({ modal: true }, "", "#new-task");
+    pushedHistory = true;
+  } catch {}
+}
+function closeModal() {
+  isModalOpen.value = false;
+  if (pushedHistory) {
+    try { history.back(); } catch {}
+    pushedHistory = false;
+  }
+}
+
+function onKeyDown(e: KeyboardEvent) {
+  if (e.key === "Escape" && isModalOpen.value) closeModal();
+}
+function onPopState() {
+  if (isModalOpen.value) isModalOpen.value = false;
+}
+
+onMounted(() => {
+  window.addEventListener("keydown", onKeyDown);
+  window.addEventListener("popstate", onPopState);
+  void loadTasks();
+});
+onBeforeUnmount(() => {
+  window.removeEventListener("keydown", onKeyDown);
+  window.removeEventListener("popstate", onPopState);
+});
 </script>
 
 <template>
@@ -146,11 +180,15 @@ onMounted(() => { void loadTasks(); });
       >
         Supprimer la sélection ({{ selectedCount }})
       </button>
-    </div>
-
-    <!-- Bloc de saisie -->
-    <div class="u-card stack" style="margin-top: var(--space-4);">
-      <TaskInput @add="handleAddTask" />
+      <button
+        class="btn btn--primary btn--plus"
+        @click="openModal"
+        title="Ajouter une tâche"
+        aria-label="Ajouter une tâche"
+        style="margin-left: var(--space-4);"
+      >
+        <i-lucide-plus aria-hidden="true" />
+      </button>
     </div>
 
     <!-- Liste en accordéon alignée à gauche -->
@@ -228,6 +266,22 @@ onMounted(() => { void loadTasks(); });
 
       </li>
     </ul>
+
+    <!-- MODALE: formulaire centré -->
+    <div v-if="isModalOpen" class="modal" role="dialog" aria-modal="true" aria-labelledby="new-task-title">
+      <div class="modal__overlay" @click="closeModal" />
+      <div class="modal__content">
+        <div class="modal__header">
+          <div id="new-task-title" class="modal__title">Nouvelle tâche</div>
+          <button class="btn btn--icon btn--ghost modal__close" @click="closeModal" aria-label="Fermer">
+            <i-lucide-x aria-hidden="true" />
+          </button>
+        </div>
+        <!-- TaskInput dans la modale; Enter soumet; Enregistrer en bas du form -->
+        <TaskInput @add="handleAddTask" />
+      </div>
+    </div>
+
   </section>
 </template>
 

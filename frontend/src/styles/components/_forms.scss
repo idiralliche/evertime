@@ -32,3 +32,32 @@ textarea:focus-visible {
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-focus) 22%, transparent),
     inset 0 1px 2px rgba(0, 0, 0, 0.04);
 }
+
+// Form fields with stacked label and visible inputs.
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2); /* small gap between label and control */
+}
+
+.form-field > label {
+  display: block; /* force above the control */
+  color: var(--color-text-muted);
+  font-size: var(--small);
+}
+
+.form-control {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-muted);
+  /* Make fields stand out from modal card background */
+  box-shadow: var(--shadow-sm);
+}
+
+/* Focus: soft bluish ring per your previous preference */
+.form-control:focus-visible {
+  outline: 2px solid color-mix(in srgb, #3b82f6 35%, transparent);
+  outline-offset: 2px;
+}
