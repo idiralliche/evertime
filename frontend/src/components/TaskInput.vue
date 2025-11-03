@@ -74,6 +74,10 @@ function onSubmit() {
       />
     </div>
 
+    <div class="inline" style="display:flex; justify-content:flex-end; margin-top: var(--space-4);">
+      <button type="submit" class="btn btn--primary">Enregistrer</button>
+    </div>
+
     <small v-if="error" class="u-muted" role="alert">{{ error }}</small>
   </form>
 </template>
