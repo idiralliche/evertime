@@ -27,6 +27,9 @@ function toUiTask(db: DbTask): UiTask {
 const tasks = ref<UiTask[]>([]);
 const selected = ref<Set<string>>(new Set());
 const open = ref<Set<string>>(new Set());
+// reactive "original" notes snapshot (for dirty detection)
+const notesOriginal = ref<Record<string, string>>({});
+
 const selectedCount = computed(() => selected.value.size);
 const allSelected = computed(() => tasks.value.length > 0 && selected.value.size === tasks.value.length);
 
@@ -37,11 +40,17 @@ async function loadTasks() {
   const keep = new Set<string>();
   for (const t of tasks.value) if (selected.value.has(t.id)) keep.add(t.id);
   selected.value = keep;
+
+  // take an "original" snapshot for dirty comparison
+  snapshotOriginalNotes();
 }
 
 async function handleAddTask(payload: { title: string; estMin?: number }) {
   const created = await createTaskFromInput(payload);
-  tasks.value.unshift(toUiTask(created));
+  const ui = toUiTask(created);
+  tasks.value.unshift(ui);
+  // newly created task has empty notes (original = "")
+  notesOriginal.value = { ...notesOriginal.value, [ui.id]: "" };
 }
 
 function toggleOne(id: string, checked: boolean) {
@@ -65,24 +74,49 @@ async function bulkDeleteSelected() {
   if (!ids.length) return;
   if (!confirm(`Supprimer ${ids.length} tâche(s) sélectionnée(s) ?`)) return;
   await deleteTasks(ids);
-  const alive = new Set(ids);
-  tasks.value = tasks.value.filter(t => !alive.has(t.id));
+  const gone = new Set(ids);
+  tasks.value = tasks.value.filter(t => !gone.has(t.id));
   selected.value = new Set();
+  open.value = new Set();
+
+  // shrink original map
+  const next: Record<string, string> = {};
+  for (const t of tasks.value) next[t.id] = notesOriginal.value[t.id] ?? "";
+  notesOriginal.value = next;
 }
 
 async function handleDeleteTask(id: string) {
   await deleteTask(id);
   tasks.value = tasks.value.filter(t => t.id !== id);
-  if (selected.value.has(id)) {
-    const next = new Set(selected.value);
-    next.delete(id);
-    selected.value = next;
-  }
+  const s = new Set(selected.value); s.delete(id); selected.value = s;
+  const o = new Set(open.value); o.delete(id); open.value = o;
+
+  // shrink original map
+  const next = { ...notesOriginal.value };
+  delete next[id];
+  notesOriginal.value = next;
 }
 
+// persist notes only when dirty; then update original snapshot for that task
 async function handleSaveNotes(t: UiTask) {
+  if (!isDirty(t)) return;
   await updateTaskNotes(t.id, t.notes);
-  // No reload needed; UI already has the latest plain notes.
+  // update original to current trimmed notes to clear dirty state
+  notesOriginal.value = { ...notesOriginal.value, [t.id]: (t.notes ?? "").trim() };
+}
+
+// recompute original map from current tasks (called after loads)
+function snapshotOriginalNotes() {
+  const obj: Record<string, string> = {};
+  for (const t of tasks.value) obj[t.id] = (t.notes ?? "").trim();
+  notesOriginal.value = obj; // reassign for reactivity
+}
+
+// isDirty when trimmed notes differ from original and not empty
+function isDirty(t: UiTask): boolean {
+  const cur = (t.notes ?? "").trim();
+  const orig = (notesOriginal.value[t.id] ?? "").trim();
+  return cur !== orig;
 }
 
 onMounted(() => { void loadTasks(); });
@@ -166,8 +200,25 @@ onMounted(() => { void loadTasks(); });
           </div>
         </div>
 
+        <!-- Panneau accordéon : bloc notes (label au-dessus + bouton icône ghost conditionnel) -->
         <div v-if="open.has(t.id)" class="task-details">
-          <label :for="`notes-${t.id}`" class="u-muted"><small>Notes</small></label>
+          <!-- header row: label (left) + save icon (right, only when dirty) -->
+          <div class="inline" style="align-items:center;">
+            <label :for="`notes-${t.id}`" class="u-muted"><small>Notes</small></label>
+
+            <!-- Icon-only Save, ghost, ONLY when text is newly entered (= dirty) -->
+            <button
+              v-if="isDirty(t)"
+              class="btn btn--icon btn--ghost u-ml-auto"
+              @click="handleSaveNotes(t)"
+              title="Enregistrer (vide = supprimer)"
+              aria-label="Enregistrer"
+            >
+              <i-lucide-save aria-hidden="true" />
+            </button>
+          </div>
+
+          <!-- same style as TaskInput inputs -->
           <textarea
             :id="`notes-${t.id}`"
             v-model="t.notes"
@@ -176,12 +227,6 @@ onMounted(() => { void loadTasks(); });
             placeholder="Notes (facultatif)"
             aria-label="Notes pour la tâche"
           ></textarea>
-
-          <div class="inline" style="justify-content:flex-end;">
-            <button class="btn btn--icon btn--ghost" @click="handleSaveNotes(t)" title="Enregistrer les détails" aria-label="Enregistrer">
-              <i-lucide-save aria-hidden="true" />
-            </button>
-          </div>
         </div>
 
       </li>
