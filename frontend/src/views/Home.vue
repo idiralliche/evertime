@@ -1,19 +1,26 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from "vue";
 import TaskInput from "../components/TaskInput.vue";
-import { listTasks, createTaskFromInput, deleteTask, deleteTasks } from "../db";
+import { listTasks, createTaskFromInput, deleteTask, deleteTasks, updateTaskNotes } from "../db";
 import type { DbTask } from "../db";
 import { formatDuration } from "../utils/format";
-import { decodeTitleCiphertextToPlain } from "../codec/taskCiphertext";
+import { decodeCiphertext, decodeOptionalCiphertext } from "../codec/taskCiphertext";
 
-type UiTask = { id: string; title: string; estMin?: number; createdAt: string };
+type UiTask = {
+  id: string;
+  title: string;
+  estMin?: number;
+  createdAt: string;
+  notes: string;
+};
 
 function toUiTask(db: DbTask): UiTask {
   return {
     id: db.id,
-    title: decodeTitleCiphertextToPlain(db.title_ciphertext),
+    title: decodeCiphertext(db.title_ciphertext),
     estMin: db.est_duration_min ?? undefined,
     createdAt: db.created_at,
+    notes: decodeOptionalCiphertext(db.notes_ciphertext),
   };
 }
 
@@ -71,6 +78,11 @@ async function handleDeleteTask(id: string) {
     next.delete(id);
     selected.value = next;
   }
+}
+
+async function handleSaveNotes(t: UiTask) {
+  await updateTaskNotes(t.id, t.notes);
+  // No reload needed; UI already has the latest plain notes.
 }
 
 onMounted(() => { void loadTasks(); });
@@ -154,9 +166,24 @@ onMounted(() => { void loadTasks(); });
           </div>
         </div>
 
-        <div v-if="open.has(t.id)" class="task-details u-muted">
-          <small>Détails (à venir) — description, notes, priorité, échéance…</small>
+        <div v-if="open.has(t.id)" class="task-details">
+          <label :for="`notes-${t.id}`" class="u-muted"><small>Notes</small></label>
+          <textarea
+            :id="`notes-${t.id}`"
+            v-model="t.notes"
+            rows="3"
+            class="u-radius"
+            placeholder="Notes (facultatif)"
+            aria-label="Notes pour la tâche"
+          ></textarea>
+
+          <div class="inline" style="justify-content:flex-end;">
+            <button class="btn btn--icon btn--ghost" @click="handleSaveNotes(t)" title="Enregistrer les détails" aria-label="Enregistrer">
+              <i-lucide-save aria-hidden="true" />
+            </button>
+          </div>
         </div>
+
       </li>
     </ul>
   </section>

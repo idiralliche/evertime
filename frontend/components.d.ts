@@ -13,6 +13,7 @@ declare module 'vue' {
   export interface GlobalComponents {
     ILucideChevronDown: typeof import('~icons/lucide/chevron-down')['default']
     ILucideChevronUp: typeof import('~icons/lucide/chevron-up')['default']
+    ILucideSave: typeof import('~icons/lucide/save')['default']
     ILucideTrash2: typeof import('~icons/lucide/trash2')['default']
     TaskInput: typeof import('./src/components/TaskInput.vue')['default']
   }

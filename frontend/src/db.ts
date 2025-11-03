@@ -1,26 +1,26 @@
 // Dexie DB for offline-first tasks storage (OpenAPI-aligned).
 import Dexie, { type Table } from 'dexie';
-import { encodeTitlePlainToCiphertext } from './codec/taskCiphertext';
+import { encodeCiphertext } from './codec/taskCiphertext';
 
 export type Priority = 'low' | 'normal' | 'high';
 export type TaskStatus = 'inbox' | 'planned' | 'completed' | 'cancelled';
 
 export interface DbTask {
-  id: string;                      // uuid
-  title_ciphertext: string;        // base64 placeholder (client-side encryption later)
+  id: string;
+  title_ciphertext: string;
   notes_ciphertext?: string | null;
   est_duration_min?: number | null;
-  priority: Priority;              // default: 'normal'
-  is_urgent: boolean;              // default: false
-  due_at?: string | null;          // ISO8601 or null
-  flexibility_score: number;       // default: 50
-  status: TaskStatus;              // default: 'inbox'
+  priority: Priority;
+  is_urgent: boolean;
+  due_at?: string | null;
+  flexibility_score: number;
+  status: TaskStatus;
   parent_task_id?: string | null;
   recurrence_series_id?: string | null;
   tag_ids?: string[];
-  created_at: string;              // ISO8601
-  updated_at: string;              // ISO8601
-  etag: string;                    // optimistic concurrency placeholder
+  created_at: string;
+  updated_at: string;
+  etag: string;
 }
 
 export class EverTimeDB extends Dexie {
@@ -58,7 +58,8 @@ export async function createTaskFromInput(payload: { title: string; estMin?: num
   const now = new Date().toISOString();
   const task: DbTask = {
     id: crypto.randomUUID(),
-    title_ciphertext: encodeTitlePlainToCiphertext(payload.title),
+    title_ciphertext: encodeCiphertext(payload.title),
+    notes_ciphertext: null,
     est_duration_min: payload.estMin ?? null,
     priority: 'normal',
     is_urgent: false,
@@ -87,4 +88,12 @@ export async function deleteTasks(ids: string[]): Promise<void> {
 
 export async function clearAllTasks(): Promise<void> {
   await db.tasks.clear();
+}
+
+// Update notes; empty/whitespace => null; bumps updated_at/etag.
+export async function updateTaskNotes(id: string, notesPlain: string | undefined): Promise<void> {
+  const trimmed = (notesPlain ?? '').trim();
+  const notes_ciphertext = trimmed ? encodeCiphertext(trimmed) : null;
+  const now = new Date().toISOString();
+  await db.tasks.update(id, { notes_ciphertext, updated_at: now, etag: `W/"${now}"` });
 }
