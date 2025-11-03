@@ -54,12 +54,12 @@ export async function listTasks(): Promise<DbTask[]> {
   return db.tasks.orderBy('created_at').reverse().toArray();
 }
 
-export async function createTaskFromInput(payload: { title: string; estMin?: number }): Promise<DbTask> {
+export async function createTaskFromInput(payload: { title: string; estMin?: number; notes?: string; }): Promise<DbTask> {
   const now = new Date().toISOString();
   const task: DbTask = {
     id: crypto.randomUUID(),
     title_ciphertext: encodeCiphertext(payload.title),
-    notes_ciphertext: null,
+    notes_ciphertext: payload.notes && payload.notes.trim() ? encodeCiphertext(payload.notes) : null,
     est_duration_min: payload.estMin ?? null,
     priority: 'normal',
     is_urgent: false,

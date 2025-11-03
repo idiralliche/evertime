@@ -45,12 +45,9 @@ async function loadTasks() {
   snapshotOriginalNotes();
 }
 
-async function handleAddTask(payload: { title: string; estMin?: number }) {
+async function handleAddTask(payload: { title: string; estMin?: number; notes?: string }) {
   const created = await createTaskFromInput(payload);
-  const ui = toUiTask(created);
-  tasks.value.unshift(ui);
-  // newly created task has empty notes (original = "")
-  notesOriginal.value = { ...notesOriginal.value, [ui.id]: "" };
+  tasks.value.unshift(toUiTask(created));
 }
 
 function toggleOne(id: string, checked: boolean) {

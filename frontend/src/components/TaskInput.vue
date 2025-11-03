@@ -4,11 +4,12 @@ import { ref } from "vue";
 import { parseDurationToMinutes } from "../utils/parse";
 
 const emit = defineEmits<{
-  (e: "add", payload: { title: string; estMin?: number }): void;
+  (e: "add", payload: { title: string; estMin?: number; notes?: string }): void;
 }>();
 
 const title = ref("");
 const estimation = ref(""); // raw user input (e.g., "1h15", "90", "1:15")
+const notes = ref("");
 const error = ref("");
 
 function onSubmit() {
@@ -26,16 +27,19 @@ function onSubmit() {
     }
     estMin = parsed;
   }
-  emit("add", { title: t, estMin });
+  const n = notes.value.trim();
+  emit("add", { title: t, estMin, notes: n || undefined });
+
   // reset form
   title.value = "";
   estimation.value = "";
+  notes.value = "";
   error.value = "";
 }
 </script>
 
 <template>
-  <!-- add u-flex so gap works and we can push the button -->
+  <!-- Column layout: row (title/duration/button) + row (notes) -->
   <form class="inline u-flex u-gap-4" @submit.prevent="onSubmit">
     <input
       type="text"
@@ -53,6 +57,14 @@ function onSubmit() {
       inputmode="numeric"
       class="u-radius"
     />
+    <textarea
+      id="task-notes"
+      v-model="notes"
+      rows="1"
+      class="u-radius"
+      placeholder="Notes (facultatif)…"
+      aria-label="Notes de la tâche"
+    ></textarea>
     <!-- push this button to the far right -->
     <button type="submit" class="btn btn--primary u-ml-auto">Ajouter</button>
   </form>
