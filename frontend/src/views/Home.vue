@@ -203,13 +203,13 @@ onMounted(() => { void loadTasks(); });
         <!-- Panneau accordéon : bloc notes (label au-dessus + bouton icône ghost conditionnel) -->
         <div v-if="open.has(t.id)" class="task-details">
           <!-- header row: label (left) + save icon (right, only when dirty) -->
-          <div class="inline" style="align-items:center;">
+          <div class="task-notes-head">
             <label :for="`notes-${t.id}`" class="u-muted"><small>Notes</small></label>
 
-            <!-- Icon-only Save, ghost, ONLY when text is newly entered (= dirty) -->
+            <!-- Icon-only Save, compact & ghost; visible seulement si modifié -->
             <button
               v-if="isDirty(t)"
-              class="btn btn--icon btn--ghost u-ml-auto"
+              class="btn btn--icon btn--icon-sm btn--ghost"
               @click="handleSaveNotes(t)"
               title="Enregistrer (vide = supprimer)"
               aria-label="Enregistrer"

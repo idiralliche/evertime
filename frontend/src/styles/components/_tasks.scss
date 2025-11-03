@@ -46,3 +46,15 @@ ul.stack > li.u-card {
   padding-left: calc(1.5rem + 0.75rem); /* checkbox (≈1.5rem) + gap (.75rem) */
   text-align: left;
 }
+
+/* Notes header row with vertical centering */
+.task-notes-head {
+  display: flex;
+  align-items: center; /* vertical alignment */
+  gap: var(--space-3);
+}
+.task-notes-head label {
+  display: inline-flex; /* align text inside */
+  align-items: center;
+  line-height: 1; /* reduce baseline drift vs icon */
+}
