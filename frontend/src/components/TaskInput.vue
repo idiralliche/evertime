@@ -1,15 +1,14 @@
 <script setup lang="ts">
-// Emits "add": { title, estMin?, notes? }.
+// Emits "add": { title, estMin? }.
 import { ref, defineExpose } from "vue";
 import { parseDurationToMinutes } from "../utils/parse";
 
 const emit = defineEmits<{
-  (e: "add", payload: { title: string; estMin?: number; notes?: string }): void;
+  (e: "add", payload: { title: string; estMin?: number }): void;
 }>();
 
 const title = ref("");
 const estimation = ref(""); // raw user input (e.g., "1h15", "90", "1:15")
-const notes = ref("");
 const error = ref("");
 
 // Reference to the title input for autofocus
@@ -36,13 +35,11 @@ function onSubmit() {
     }
     estMin = parsed;
   }
-  const n = notes.value.trim();
-  emit("add", { title: t, estMin, notes: n || undefined });
+  emit("add", { title: t, estMin });
 
   // reset form
   title.value = "";
   estimation.value = "";
-  notes.value = "";
   error.value = "";
 }
 </script>
@@ -75,20 +72,6 @@ function onSubmit() {
         placeholder="(ex: 45, 1h15, 1:15)"
         inputmode="numeric"
       />
-    </div>
-
-    <!-- Notes -->
-    <div class="form-field">
-      <label for="task-notes" class="u-muted"><small>Notes (facultatif)</small></label>
-      <textarea
-        id="task-notes"
-        v-model="notes"
-        rows="4"
-        class="form-control"
-        placeholder="Notes…"
-        @keydown.ctrl.enter.prevent="onSubmit"
-        @keydown.meta.enter.prevent="onSubmit"
-      ></textarea>
     </div>
 
     <small v-if="error" class="u-muted" role="alert">{{ error }}</small>

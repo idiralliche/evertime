@@ -1,17 +1,16 @@
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount, computed, nextTick } from "vue";
 import TaskInput from "../components/TaskInput.vue";
-import { listTasks, createTaskFromInput, deleteTask, deleteTasks, updateTaskNotes } from "../db";
+import { listTasks, createTaskFromInput, deleteTask, deleteTasks } from "../db";
 import type { DbTask } from "../db";
 import { formatDuration } from "../utils/format";
-import { decodeCiphertext, decodeOptionalCiphertext } from "../codec/taskCiphertext";
+import { decodeCiphertext } from "../codec/taskCiphertext";
 
 type UiTask = {
   id: string;
   title: string;
   estMin?: number;
   createdAt: string;
-  notes: string;
 };
 
 function toUiTask(db: DbTask): UiTask {
@@ -20,15 +19,12 @@ function toUiTask(db: DbTask): UiTask {
     title: decodeCiphertext(db.title_ciphertext),
     estMin: db.est_duration_min ?? undefined,
     createdAt: db.created_at,
-    notes: decodeOptionalCiphertext(db.notes_ciphertext),
   };
 }
 
 const tasks = ref<UiTask[]>([]);
 const selected = ref<Set<string>>(new Set());
 const open = ref<Set<string>>(new Set());
-// reactive "original" notes snapshot (for dirty detection)
-const notesOriginal = ref<Record<string, string>>({});
 
 const selectedCount = computed(() => selected.value.size);
 const allSelected = computed(() => tasks.value.length > 0 && selected.value.size === tasks.value.length);
@@ -43,12 +39,9 @@ async function loadTasks() {
   const keep = new Set<string>();
   for (const t of tasks.value) if (selected.value.has(t.id)) keep.add(t.id);
   selected.value = keep;
-
-  // take an "original" snapshot for dirty comparison
-  snapshotOriginalNotes();
 }
 
-async function handleAddTask(payload: { title: string; estMin?: number; notes?: string }) {
+async function handleAddTask(payload: { title: string; estMin?: number }) {
   const created = await createTaskFromInput(payload);
   tasks.value.unshift(toUiTask(created));
   closeModal();
@@ -64,12 +57,6 @@ function toggleAll(checked: boolean) {
   selected.value = checked ? new Set(tasks.value.map(t => t.id)) : new Set();
 }
 
-function toggleOpen(id: string) {
-  const n = new Set(open.value);
-  n.has(id) ? n.delete(id) : n.add(id);
-  open.value = n;
-}
-
 async function bulkDeleteSelected() {
   const ids = Array.from(selected.value);
   if (!ids.length) return;
@@ -79,11 +66,6 @@ async function bulkDeleteSelected() {
   tasks.value = tasks.value.filter(t => !gone.has(t.id));
   selected.value = new Set();
   open.value = new Set();
-
-  // shrink original map
-  const next: Record<string, string> = {};
-  for (const t of tasks.value) next[t.id] = notesOriginal.value[t.id] ?? "";
-  notesOriginal.value = next;
 }
 
 async function handleDeleteTask(id: string) {
@@ -91,33 +73,6 @@ async function handleDeleteTask(id: string) {
   tasks.value = tasks.value.filter(t => t.id !== id);
   const s = new Set(selected.value); s.delete(id); selected.value = s;
   const o = new Set(open.value); o.delete(id); open.value = o;
-
-  // shrink original map
-  const next = { ...notesOriginal.value };
-  delete next[id];
-  notesOriginal.value = next;
-}
-
-// persist notes only when dirty; then update original snapshot for that task
-async function handleSaveNotes(t: UiTask) {
-  if (!isDirty(t)) return;
-  await updateTaskNotes(t.id, t.notes);
-  // update original to current trimmed notes to clear dirty state
-  notesOriginal.value = { ...notesOriginal.value, [t.id]: (t.notes ?? "").trim() };
-}
-
-// recompute original map from current tasks (called after loads)
-function snapshotOriginalNotes() {
-  const obj: Record<string, string> = {};
-  for (const t of tasks.value) obj[t.id] = (t.notes ?? "").trim();
-  notesOriginal.value = obj; // reassign for reactivity
-}
-
-// isDirty when trimmed notes differ from original and not empty
-function isDirty(t: UiTask): boolean {
-  const cur = (t.notes ?? "").trim();
-  const orig = (notesOriginal.value[t.id] ?? "").trim();
-  return cur !== orig;
 }
 
 // Ref to child component to call focusFirst()
@@ -197,7 +152,6 @@ onBeforeUnmount(() => {
       </button>
     </div>
 
-    <!-- Liste en accordéon alignée à gauche -->
     <ul class="stack" style="margin-top: var(--space-4);">
       <li
         v-for="t in tasks"
@@ -222,16 +176,6 @@ onBeforeUnmount(() => {
           <div class="inline">
             <button
               class="btn btn--icon btn--ghost"
-              :title="open.has(t.id) ? 'Masquer les détails' : 'Détails'"
-              @click="toggleOpen(t.id)"
-              aria-label="Détails"
-            >
-              <i-lucide-chevron-up v-if="open.has(t.id)" aria-hidden="true" />
-              <i-lucide-chevron-down v-else aria-hidden="true" />
-            </button>
-
-            <button
-              class="btn btn--icon btn--ghost"
               title="Supprimer"
               aria-label="Supprimer"
               @click="handleDeleteTask(t.id)"
@@ -240,36 +184,6 @@ onBeforeUnmount(() => {
           </button>
           </div>
         </div>
-
-        <!-- Panneau accordéon : bloc notes (label au-dessus + bouton icône ghost conditionnel) -->
-        <div v-if="open.has(t.id)" class="task-details">
-          <!-- header row: label (left) + save icon (right, only when dirty) -->
-          <div class="task-notes-head">
-            <label :for="`notes-${t.id}`" class="u-muted"><small>Notes</small></label>
-
-            <!-- Icon-only Save, compact & ghost; visible seulement si modifié -->
-            <button
-              v-if="isDirty(t)"
-              class="btn btn--icon btn--icon-sm btn--ghost"
-              @click="handleSaveNotes(t)"
-              title="Enregistrer (vide = supprimer)"
-              aria-label="Enregistrer"
-            >
-              <i-lucide-save aria-hidden="true" />
-            </button>
-          </div>
-
-          <!-- same style as TaskInput inputs -->
-          <textarea
-            :id="`notes-${t.id}`"
-            v-model="t.notes"
-            rows="3"
-            class="form-control"
-            placeholder="Notes (facultatif)"
-            aria-label="Notes pour la tâche"
-          ></textarea>
-        </div>
-
       </li>
     </ul>
 
