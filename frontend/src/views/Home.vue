@@ -1,10 +1,8 @@
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount, computed, nextTick } from "vue";
 import TaskInput from "../components/TaskInput.vue";
-import { listTasks, createTaskFromInput, deleteTask, deleteTasks } from "../db";
-import type { DbTask } from "../db";
+import { tasksRepo } from "../data/tasks.repo";
 import { formatDuration } from "../utils/format";
-import { decodeCiphertext } from "../codec/taskCiphertext";
 
 type UiTask = {
   id: string;
@@ -12,15 +10,6 @@ type UiTask = {
   estMin?: number;
   createdAt: string;
 };
-
-function toUiTask(db: DbTask): UiTask {
-  return {
-    id: db.id,
-    title: decodeCiphertext(db.title_ciphertext),
-    estMin: db.est_duration_min ?? undefined,
-    createdAt: db.created_at,
-  };
-}
 
 const tasks = ref<UiTask[]>([]);
 const selected = ref<Set<string>>(new Set());
@@ -33,8 +22,7 @@ const isModalOpen = ref(false);
 let pushedHistory = false;
 
 async function loadTasks() {
-  const rows = await listTasks();
-  tasks.value = rows.map(toUiTask);
+  tasks.value = await tasksRepo.list();
   // keep selection coherent after refresh
   const keep = new Set<string>();
   for (const t of tasks.value) if (selected.value.has(t.id)) keep.add(t.id);
@@ -42,8 +30,8 @@ async function loadTasks() {
 }
 
 async function handleAddTask(payload: { title: string; estMin?: number }) {
-  const created = await createTaskFromInput(payload);
-  tasks.value.unshift(toUiTask(created));
+  const created = await tasksRepo.create(payload);
+  tasks.value.unshift(created);
   closeModal();
 }
 
@@ -61,7 +49,7 @@ async function bulkDeleteSelected() {
   const ids = Array.from(selected.value);
   if (!ids.length) return;
   if (!confirm(`Supprimer ${ids.length} tâche(s) sélectionnée(s) ?`)) return;
-  await deleteTasks(ids);
+  await tasksRepo.deleteMany(ids);
   const gone = new Set(ids);
   tasks.value = tasks.value.filter(t => !gone.has(t.id));
   selected.value = new Set();
@@ -69,7 +57,7 @@ async function bulkDeleteSelected() {
 }
 
 async function handleDeleteTask(id: string) {
-  await deleteTask(id);
+  await tasksRepo.deleteOne(id);
   tasks.value = tasks.value.filter(t => t.id !== id);
   const s = new Set(selected.value); s.delete(id); selected.value = s;
   const o = new Set(open.value); o.delete(id); open.value = o;
