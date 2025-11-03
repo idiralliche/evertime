@@ -8,7 +8,6 @@ export type TaskStatus = 'inbox' | 'planned' | 'completed' | 'cancelled';
 export interface DbTask {
   id: string;
   title_ciphertext: string;
-  notes_ciphertext?: string | null;
   est_duration_min?: number | null;
   priority: Priority;
   is_urgent: boolean;
@@ -59,7 +58,6 @@ export async function createTaskFromInput(payload: { title: string; estMin?: num
   const task: DbTask = {
     id: crypto.randomUUID(),
     title_ciphertext: encodeCiphertext(payload.title),
-    notes_ciphertext: payload.notes && payload.notes.trim() ? encodeCiphertext(payload.notes) : null,
     est_duration_min: payload.estMin ?? null,
     priority: 'normal',
     is_urgent: false,
@@ -88,12 +86,4 @@ export async function deleteTasks(ids: string[]): Promise<void> {
 
 export async function clearAllTasks(): Promise<void> {
   await db.tasks.clear();
-}
-
-// Update notes; empty/whitespace => null; bumps updated_at/etag.
-export async function updateTaskNotes(id: string, notesPlain: string | undefined): Promise<void> {
-  const trimmed = (notesPlain ?? '').trim();
-  const notes_ciphertext = trimmed ? encodeCiphertext(trimmed) : null;
-  const now = new Date().toISOString();
-  await db.tasks.update(id, { notes_ciphertext, updated_at: now, etag: `W/"${now}"` });
 }
