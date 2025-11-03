@@ -28,18 +28,32 @@ export class EverTimeDB extends Dexie {
   constructor() {
     super('EverTimeDB');
 
-    // v1 (initial schema) — kept for upgrade path
+    // v1 (initial)
     this.version(1).stores({
       tasks: 'id, status, priority, due_at, updated_at'
     });
 
-    // v2 — add missing index on created_at so we can orderBy('created_at')
+    // v2 (add created_at index) + backfill created_at
     this.version(2).stores({
       tasks: 'id, created_at, status, priority, due_at, updated_at'
     }).upgrade(tx => {
-      // Ensure created_at exists to build the new index
       return tx.table('tasks').toCollection().modify((t: any) => {
         if (!t.created_at) t.created_at = t.updated_at ?? new Date().toISOString();
+      });
+    });
+
+    // v3 (remove notes_ciphertext field on existing rows)
+    this.version(3).stores({
+      tasks: 'id, created_at, status, priority, due_at, updated_at'
+    }).upgrade(async (tx) => {
+      const table = tx.table('tasks');
+      await table.toCollection().modify((t: any) => {
+        if ('notes_ciphertext' in t) {
+          delete t.notes_ciphertext;
+          const now = new Date().toISOString();
+          t.updated_at = now;
+          t.etag = `W/"${now}"`;
+        }
       });
     });
   }
