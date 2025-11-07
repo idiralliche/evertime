@@ -101,3 +101,28 @@ export async function deleteTasks(ids: string[]): Promise<void> {
 export async function clearAllTasks(): Promise<void> {
   await db.tasks.clear();
 }
+
+export async function updateTask(
+  id: string,
+  patch: { title?: string; estMin?: number | null }
+): Promise<DbTask> {
+  const now = new Date().toISOString();
+  const changes: Partial<DbTask> = {
+    updated_at: now,
+    etag: `W/"${now}"`,
+  };
+
+  if (patch.title !== undefined) {
+    const t = patch.title.trim();
+    if (!t) throw new Error("Title must be non-empty");
+    changes.title_ciphertext = encodeCiphertext(t);
+  }
+  if (patch.estMin !== undefined) {
+    changes.est_duration_min = patch.estMin ?? null;
+  }
+
+  await db.tasks.update(id, changes);
+  const updated = await db.tasks.get(id);
+  if (!updated) throw new Error("Task not found after update");
+  return updated;
+}

@@ -1,8 +1,8 @@
 // Dexie-backed repository implementing the TasksRepo port.
-import { listTasks, createTaskFromInput, deleteTask, deleteTasks } from "../db";
+import { listTasks, createTaskFromInput, deleteTask, deleteTasks, updateTask } from "../db";
 import { decodeCiphertext } from "../codec/taskCiphertext";
 import type { DbTask } from "../db";
-import type { TaskModel, TaskCreateInput, TasksRepo } from "./tasks.port";
+import type { TaskModel, TaskCreateInput, TaskUpdateInput, TasksRepo } from "./tasks.port";
 
 function toModel(row: DbTask): TaskModel {
   return {
@@ -22,6 +22,13 @@ export function createDexieRepo(): TasksRepo {
     async create(input: TaskCreateInput) {
       const created = await createTaskFromInput(input);
       return toModel(created);
+    },
+    async update(input: TaskUpdateInput) {
+      const updated = await updateTask(input.id, {
+        title: input.title,
+        estMin: input.estMin ?? null,
+      });
+      return toModel(updated);
     },
     async deleteOne(id: string) {
       await deleteTask(id);
